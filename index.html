@@ -548,6 +548,54 @@
   .cmnt-item-author { color: var(--livemap); font-weight: 700; }
   .cmnt-item-meta { display: inline-flex; gap: 8px; align-items: center; min-width: 0; }
   .cmnt-item-tools { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; white-space: nowrap; }
+  .cmnt-more-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .cmnt-more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-3);
+    font: 800 17px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .cmnt-more:hover,
+  .cmnt-more.open {
+    background: #F1F1EA;
+    color: var(--ink);
+  }
+  .cmnt-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 30;
+    display: grid;
+    min-width: 98px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(28,34,31,.12);
+  }
+  .cmnt-menu button {
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink);
+    padding: 7px 9px;
+    text-align: left;
+    font: 600 12px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .cmnt-menu button:hover { background: #F6F6F0; }
+  .cmnt-menu button.danger { color: var(--tie-poor); }
   .cmnt-heart {
     display: inline-flex;
     align-items: center;
@@ -2174,6 +2222,7 @@ if (parseStatus) parseStatus.textContent = "";
   let jumpHighlight = null;
   let activeReplyId = null;
   let activeEditKey = null;
+  let activeMenuKey = null;
 
   const fab = document.getElementById("cmntFab");
   const fabLabel = document.getElementById("cmntFabLabel");
@@ -2518,6 +2567,14 @@ if (parseStatus) parseStatus.textContent = "";
           <button class="primary" type="button" data-reply-submit="${safe(targetId)}">Post reply</button>
         </div>
       </div>` : "";
+    const renderOwnerMenu = (menuKey, deleteAttr, deleteId) => `
+      <span class="cmnt-more-wrap">
+        <button class="cmnt-more${activeMenuKey === menuKey ? " open" : ""}" type="button" data-menu-toggle="${safe(menuKey)}" title="More actions" aria-label="More actions">⋮</button>
+        ${activeMenuKey === menuKey ? `<span class="cmnt-menu">
+          <button type="button" data-edit-start="${safe(menuKey)}">Edit</button>
+          <button class="danger" type="button" ${deleteAttr}="${safe(deleteId)}">Delete</button>
+        </span>` : ""}
+      </span>`;
     const renderReply = rawReply => {
       const reply = normalizeReply(rawReply);
       const replyLiked = reply.likedBy.includes(clientId);
@@ -2530,7 +2587,7 @@ if (parseStatus) parseStatus.textContent = "";
             <span class="cmnt-reply-author">${safe(reply.author || "Anonymous")}</span>
             <span class="cmnt-item-meta">
               <span>${formatTime(reply.ts)}${reply.editedTs ? " · edited" : ""}</span>
-              ${canEditReply ? `<button class="cmnt-delete" type="button" title="Delete" data-reply-delete="${safe(reply.id)}">×</button>` : ""}
+              ${canEditReply ? renderOwnerMenu(replyEditKey, "data-reply-delete", reply.id) : ""}
             </span>
           </div>
           ${isEditingReply ? `
@@ -2544,7 +2601,6 @@ if (parseStatus) parseStatus.textContent = "";
           ` : `<div class="cmnt-reply-text">${safe(reply.text)}</div>`}
           ${isEditingReply ? "" : `<div class="cmnt-reply-actions">
             <button class="cmnt-action" type="button" data-reply-toggle="${safe(reply.id)}">Reply</button>
-            ${canEditReply ? `<button class="cmnt-action" type="button" data-edit-start="${safe(replyEditKey)}">Edit</button>` : ""}
             <button class="cmnt-heart${replyLiked ? " liked" : ""}" type="button" data-reply-like="${safe(reply.id)}" title="${replyLiked ? "Unlike" : "Like"}" aria-label="${replyLiked ? "Unlike reply" : "Like reply"}">
               <span class="cmnt-heart-icon" aria-hidden="true">${replyLiked ? "♥" : "♡"}</span>${reply.likedBy.length ? `<span class="cmnt-heart-count">${reply.likedBy.length}</span>` : ""}
             </button>
@@ -2566,7 +2622,7 @@ if (parseStatus) parseStatus.textContent = "";
             <span>${formatTime(c.ts)}${c.editedTs ? " · edited" : ""}</span>
           </span>
           <span class="cmnt-item-tools">
-            ${canEditComment ? `<button class="cmnt-delete" type="button" title="Delete" data-delete="${safe(c.id)}">×</button>` : ""}
+            ${canEditComment ? renderOwnerMenu(commentEditKey, "data-delete", c.id) : ""}
           </span>
         </div>
         ${c.quote ? `<div class="cmnt-quote" data-quote="${safe(c.quote)}">${safe(c.quote)}</div>` : ""}
@@ -2582,7 +2638,6 @@ if (parseStatus) parseStatus.textContent = "";
         ${activeSection === null ? `<span class="cmnt-section">${safe(sectionLabel(c.section))}</span>` : ""}
         ${isEditingComment ? "" : `<div class="cmnt-actions">
           <button class="cmnt-action" type="button" data-reply-toggle="${safe(c.id)}">Reply</button>
-          ${canEditComment ? `<button class="cmnt-action" type="button" data-edit-start="${safe(commentEditKey)}">Edit</button>` : ""}
           <button class="cmnt-heart${liked ? " liked" : ""}" type="button" data-like="${safe(c.id)}" title="${liked ? "Unlike" : "Like"}" aria-label="${liked ? "Unlike comment" : "Like comment"}">
             <span class="cmnt-heart-icon" aria-hidden="true">${liked ? "♥" : "♡"}</span>${c.likedBy.length ? `<span class="cmnt-heart-count">${c.likedBy.length}</span>` : ""}
           </button>
@@ -2596,6 +2651,7 @@ if (parseStatus) parseStatus.textContent = "";
     list.querySelectorAll("[data-delete]").forEach(button => {
       button.addEventListener("click", event => {
         event.stopPropagation();
+        activeMenuKey = null;
         comments = comments.filter(c => c.id !== button.dataset.delete || !isMine(normalizeComment(c)));
         saveComments();
       });
@@ -2603,6 +2659,7 @@ if (parseStatus) parseStatus.textContent = "";
     list.querySelectorAll("[data-reply-delete]").forEach(button => {
       button.addEventListener("click", event => {
         event.stopPropagation();
+        activeMenuKey = null;
         deleteReply(button.dataset.replyDelete);
       });
     });
@@ -2624,13 +2681,22 @@ if (parseStatus) parseStatus.textContent = "";
     list.querySelectorAll("[data-reply-toggle]").forEach(button => {
       button.addEventListener("click", event => {
         event.stopPropagation();
+        activeMenuKey = null;
         activeReplyId = activeReplyId === button.dataset.replyToggle ? null : button.dataset.replyToggle;
+        renderAll();
+      });
+    });
+    list.querySelectorAll("[data-menu-toggle]").forEach(button => {
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        activeMenuKey = activeMenuKey === button.dataset.menuToggle ? null : button.dataset.menuToggle;
         renderAll();
       });
     });
     list.querySelectorAll("[data-edit-start]").forEach(button => {
       button.addEventListener("click", event => {
         event.stopPropagation();
+        activeMenuKey = null;
         activeEditKey = button.dataset.editStart;
         activeReplyId = null;
         renderAll();
@@ -2688,6 +2754,7 @@ if (parseStatus) parseStatus.textContent = "";
   function likeComment(commentId) {
     const clientId = getClientId();
     let changed = false;
+    activeMenuKey = null;
     comments = comments.map(comment => {
       if (comment.id !== commentId) return comment;
       const normalized = normalizeComment(comment);
@@ -2703,6 +2770,7 @@ if (parseStatus) parseStatus.textContent = "";
   function likeReply(replyId) {
     const clientId = getClientId();
     let changed = false;
+    activeMenuKey = null;
     comments = comments.map(comment => {
       const normalized = normalizeComment(comment);
       const updated = updateReplyTree(normalized.replies, replyId, reply => {
@@ -2748,6 +2816,7 @@ if (parseStatus) parseStatus.textContent = "";
     }
     if (!changed) return;
     activeEditKey = null;
+    activeMenuKey = null;
     saveComments();
   }
 
@@ -2762,6 +2831,7 @@ if (parseStatus) parseStatus.textContent = "";
     });
     if (activeReplyId === replyId) activeReplyId = null;
     if (activeEditKey === `reply:${replyId}`) activeEditKey = null;
+    if (activeMenuKey === `reply:${replyId}`) activeMenuKey = null;
     if (changed) saveComments();
   }
 
@@ -2793,6 +2863,7 @@ if (parseStatus) parseStatus.textContent = "";
       return { ...normalized, replies: updated.replies };
     });
     activeReplyId = null;
+    activeMenuKey = null;
     saveComments();
   }
 
@@ -2822,6 +2893,7 @@ if (parseStatus) parseStatus.textContent = "";
 
   function closeDrawer() {
     drawerOpen = false;
+    activeMenuKey = null;
     drawer.classList.remove("open");
     overlay.classList.remove("visible");
   }
@@ -3020,6 +3092,10 @@ if (parseStatus) parseStatus.textContent = "";
   });
   document.addEventListener("click", event => {
     if (!authorEdit.contains(event.target) && !authorChip.contains(event.target)) authorEdit.classList.remove("open");
+    if (activeMenuKey && !event.target.closest(".cmnt-more-wrap")) {
+      activeMenuKey = null;
+      renderAll();
+    }
   });
 
   onboardDismiss.addEventListener("click", hideOnboard);
