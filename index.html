@@ -61,6 +61,21 @@
     font-size: 15px;
   }
   .study-context strong { color: var(--ink-2); font-weight: 600; }
+  .data-refresh {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+  .data-refresh button.btn {
+    padding: 7px 15px;
+    font-size: 14px;
+  }
+  .data-refresh button.btn:disabled {
+    opacity: .55;
+    cursor: wait;
+  }
   .path-divider {
     border: none;
     border-top: 3px dotted var(--ink-3);
@@ -321,6 +336,7 @@
   #parse-status { font-size: 14px; color: var(--ink-2); }
   #parse-status.err { color: var(--tie-poor); }
   .source-status { display: block; margin-top: 8px; font-size: 13px; color: var(--ink-3); }
+  .source-status.err { color: var(--tie-poor); }
 
   .cmnt-fab {
     position: fixed;
@@ -1045,6 +1061,10 @@
   <header>
     <h1>When routes diverge, whose wins?</h1>
     <p class="sub" id="study-context"></p>
+    <div class="data-refresh">
+      <button class="btn ghost" id="btn-live" type="button" title="Refresh this dashboard view with the newest available data">Refresh data</button>
+      <span class="source-status" id="source-status" aria-live="polite"></span>
+    </div>
   </header>
 
   <div class="overview">
@@ -2234,21 +2254,30 @@ function loadFeedbackJsonl(raw, sourceLabel, options = {}) {
   loadRecords(records, errors, sourceLabel, options);
 }
 
-async function loadExternalData(options = {}) {
-  const status = document.getElementById("parse-status");
+async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
+  const status = document.getElementById("parse-status") || document.getElementById("source-status");
+  const fetchUrl = options.cacheBust ? `${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}` : url;
   try {
-    const res = await fetch(EXTERNAL_DATA_URL, { cache: "no-store" });
+    const res = await fetch(fetchUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const raw = await res.text();
-    loadFeedbackJsonl(raw, "latest data file", options);
+    loadFeedbackJsonl(raw, sourceLabel, options);
     return true;
   } catch (error) {
     if (!options.silent && status) {
-      status.textContent = `Could not load ${EXTERNAL_DATA_URL}. Using embedded data.`;
+      status.textContent = options.errorMessage || `Could not load ${url}.`;
       status.className = "err";
     }
     return false;
   }
+}
+
+async function loadExternalData(options = {}) {
+  return loadFeedbackFromUrl(EXTERNAL_DATA_URL, "latest published data file", options);
+}
+
+async function loadLiveData(options = {}) {
+  return loadFeedbackFromUrl(LIVE_SOURCE_URL, "live feedback source", options);
 }
 
 const pasteButton = document.getElementById("btn-load");
@@ -2266,8 +2295,33 @@ if (pasteButton) {
   };
 }
 if (liveButton) {
-  liveButton.onclick = () => {
-    loadExternalData({ silent: false });
+  liveButton.onclick = async () => {
+    const status = document.getElementById("parse-status") || document.getElementById("source-status");
+    const originalText = liveButton.textContent;
+    liveButton.disabled = true;
+    liveButton.textContent = "Refreshing...";
+    if (status) {
+      status.textContent = "Refreshing data...";
+      status.className = "";
+    }
+    const liveLoaded = await loadLiveData({
+      silent: false,
+      cacheBust: true,
+      errorMessage: "Could not reach the live source. Trying the latest published data file."
+    });
+    if (!liveLoaded) {
+      const publishedLoaded = await loadExternalData({
+        silent: false,
+        cacheBust: true,
+        errorMessage: "Could not refresh the published data file."
+      });
+      if (publishedLoaded && status) {
+        status.textContent = "Loaded latest published data. The live source was not reachable from this browser.";
+        status.className = "";
+      }
+    }
+    liveButton.disabled = false;
+    liveButton.textContent = originalText;
   };
 }
 if (resetButton) {
