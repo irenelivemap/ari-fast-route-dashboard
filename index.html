@@ -61,6 +61,33 @@
     font-size: 15px;
   }
   .study-context strong { color: var(--ink-2); font-weight: 600; }
+  .data-refresh {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+  .data-refresh button.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 15px;
+    font-size: 14px;
+  }
+  .data-refresh button.btn svg {
+    flex: 0 0 auto;
+  }
+  .data-refresh button.btn:disabled {
+    opacity: .55;
+    cursor: wait;
+  }
+  .data-refresh-help,
+  .source-status {
+    color: var(--ink-3);
+    font-size: 13px;
+  }
+  .source-status.err { color: var(--tie-poor); }
   .path-divider {
     border: none;
     border-top: 3px dotted var(--ink-3);
@@ -1044,6 +1071,14 @@
   <header>
     <h1>When routes diverge, whose wins?</h1>
     <p class="sub" id="study-context"></p>
+    <div class="data-refresh">
+      <button class="btn" id="btn-latest-tests" type="button" title="Check the benchmark backend for new data">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.4 6.4L3 16"/><path d="M3 16v5h5"/><path d="M3 12A9 9 0 0 1 18.4 5.6L21 8"/><path d="M21 8V3h-5"/></svg>
+        <span>Check for new data</span>
+      </button>
+      <span class="data-refresh-help">Auto-refreshes every 30 min.</span>
+      <span class="source-status" id="source-status" aria-live="polite"></span>
+    </div>
   </header>
 
   <div class="overview">
@@ -1183,6 +1218,7 @@ const RATER_ALIASES = { "martijn": "Martijn" };
 const EXCLUDED_RATERS = new Set([]);
 const REASONS = ["Misses shortcut", "Unclear shortcut", "Longer distance", "Longer time", "More turns", "Crossing friction", "More elevation", "More stairs", "Other"];
 const EXTERNAL_DATA_URL = "data/feedback.jsonl";
+const DASHBOARD_DATA_SERVICE_URL = "https://ari-fast-route-dashboard-data.vercel.app/api/ari-fast-routes";
 const LIVE_REASON_LABELS = {
   longer_time: "Longer time",
   longer_distance: "Longer distance",
@@ -2192,6 +2228,7 @@ function renderAll(rebuildChips = true) {
 
 function loadRecords(records, errors, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status");
+  const sourceStatus = document.getElementById("source-status");
   if (!records.length) {
     if (!options.silent && status) {
       status.textContent = "No valid rows found.";
@@ -2217,7 +2254,12 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   const last = DATA.map(r => r.receivedAt).filter(Boolean).sort().pop();
   const lastText = last ? ` · latest ${new Date(last).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}` : "";
   const message = `Loaded ${DATA.length} rows from ${sourceLabel}` + (excluded ? ` · ${excluded} excluded` : "") + (errors.length ? ` · ${errors.length} row(s) skipped` : "") + lastText;
+  const sourceMessage = sourceLabel === "latest test data" ? `Up to date${lastText}` : message;
   if (!options.silent && status) status.textContent = message;
+  if (!options.silent && sourceStatus) {
+    sourceStatus.textContent = sourceMessage;
+    sourceStatus.className = "source-status";
+  }
 }
 
 function loadRaw(raw, sourceLabel, options = {}) {
@@ -2231,7 +2273,7 @@ function loadFeedbackJsonl(raw, sourceLabel, options = {}) {
 }
 
 async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
-  const status = document.getElementById("parse-status");
+  const status = document.getElementById("parse-status") || document.getElementById("source-status");
   const fetchUrl = options.cacheBust ? `${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}` : url;
   try {
     const res = await fetch(fetchUrl, { cache: "no-store" });
@@ -2242,7 +2284,7 @@ async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
   } catch (error) {
     if (!options.silent && status) {
       status.textContent = options.errorMessage || `Could not load ${url}.`;
-      status.className = "err";
+      status.className = status.id === "source-status" ? "source-status err" : "err";
     }
     return false;
   }
@@ -2252,7 +2294,12 @@ async function loadExternalData(options = {}) {
   return loadFeedbackFromUrl(EXTERNAL_DATA_URL, "latest published data file", options);
 }
 
+async function loadLatestTestData(options = {}) {
+  return loadFeedbackFromUrl(`${DASHBOARD_DATA_SERVICE_URL}/refresh`, "latest test data", options);
+}
+
 const pasteButton = document.getElementById("btn-load");
+const latestTestsButton = document.getElementById("btn-latest-tests");
 const resetButton = document.getElementById("btn-reset");
 if (pasteButton) {
   pasteButton.onclick = () => {
@@ -2263,6 +2310,32 @@ if (pasteButton) {
       return;
     }
     loadRaw(raw, "pasted text");
+  };
+}
+if (latestTestsButton) {
+  latestTestsButton.onclick = async () => {
+    const status = document.getElementById("source-status") || document.getElementById("parse-status");
+    const label = latestTestsButton.querySelector("span");
+    const originalText = label ? label.textContent : latestTestsButton.textContent;
+    latestTestsButton.disabled = true;
+    if (label) label.textContent = "Checking...";
+    else latestTestsButton.textContent = "Checking...";
+    if (status) {
+      status.textContent = "Checking...";
+      status.className = "source-status";
+    }
+    const loaded = await loadLatestTestData({
+      silent: false,
+      cacheBust: true,
+      errorMessage: "Latest test data service is not available yet."
+    });
+    if (!loaded && status) {
+      status.textContent = "Could not check for new data.";
+      status.className = "source-status err";
+    }
+    latestTestsButton.disabled = false;
+    if (label) label.textContent = originalText;
+    else latestTestsButton.textContent = originalText;
   };
 }
 if (resetButton) {
