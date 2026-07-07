@@ -360,7 +360,7 @@
     inset: 0;
     z-index: 88;
     display: none;
-    background: rgba(28, 34, 31, 0.22);
+    background: transparent;
   }
   .cmnt-overlay.visible { display: block; }
   .cmnt-drawer {
@@ -666,15 +666,39 @@
     font-style: italic;
   }
   .sel-byline {
-    color: rgba(255,255,255,.58);
-    padding: 6px 12px 0;
+    color: rgba(255,255,255,.62);
+    padding: 0 12px 8px;
     font-size: 12px;
   }
-  .sel-author {
-    color: rgba(255,255,255,.88);
-    border-bottom: 1px dashed rgba(255,255,255,.4);
-    cursor: pointer;
+  .sel-name-row {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 8px;
+    align-items: center;
+    padding: 9px 12px 6px;
   }
+  .sel-name-row label {
+    color: rgba(255,255,255,.78);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .sel-name-row input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 7px;
+    background: rgba(255,255,255,.1);
+    color: #fff;
+    padding: 7px 9px;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+  .sel-name-row input:focus {
+    border-color: rgba(255,255,255,.55);
+    background: rgba(255,255,255,.14);
+  }
+  .sel-name-row input::placeholder { color: rgba(255,255,255,.42); }
   .sel-row { display: flex; align-items: stretch; }
   .sel-row input {
     flex: 1;
@@ -782,26 +806,6 @@
         <p class="sec-note">Qualitative signals that are not already captured by the structured reason taxonomy above.</p>
         <div class="card" id="comment-themes"></div>
       </section>
-
-      <hr class="path-divider">
-
-      <section id="data-update-section">
-        <div class="sec-head"><h2>Update the data</h2></div>
-        <details class="updater">
-          <summary>Paste a new export to refresh every chart</summary>
-          <div class="updater-body">
-            <p>When hosted, the dashboard can load <span>data/feedback.jsonl</span> automatically. The paste box is still useful for quick local checks or one-off exports.</p>
-            <textarea id="paste-area" placeholder="Kristin	ARI	81%&#10;Crossing friction&#10;Delete&#10;..." aria-label="Paste raw export"></textarea>
-            <div class="btn-row">
-              <button class="btn" id="btn-live">Load latest data file</button>
-              <button class="btn" id="btn-load">Load pasted data</button>
-              <button class="btn ghost" id="btn-reset">Restore embedded data</button>
-              <span id="parse-status"></span>
-            </div>
-            <span class="source-status" id="source-status"></span>
-          </div>
-        </details>
-      </section>
     </div>
   </details>
 
@@ -809,13 +813,17 @@
 
 <div class="cmnt-onboard" id="cmntOnboard">
   <h3>How to leave comments</h3>
-  <p>Select text to comment on a specific finding, or use Add comment for a general note. Comments are shared when the report is online.</p>
+  <p>Select text to comment on a specific finding, or use Add comment for a general note. Comments are shared with everyone viewing this report.</p>
   <button type="button" id="cmntOnboardDismiss">Got it</button>
 </div>
 
 <div class="sel-popover" id="selPopover" role="tooltip">
   <div class="sel-quote" id="selQuote"></div>
-  <div class="sel-byline">Posting as <span class="sel-author" id="selAuthor" title="Click to change">Anonymous</span></div>
+  <div class="sel-name-row">
+    <label for="selNameInput">Your name</label>
+    <input id="selNameInput" placeholder="Anonymous" maxlength="40" autocomplete="name">
+  </div>
+  <div class="sel-byline">This name will appear next to your comment.</div>
   <div class="sel-row">
     <input id="selInput" placeholder="Comment on selection..." maxlength="500" autocomplete="off">
     <button type="button" id="selSend" disabled>Post</button>
@@ -1858,7 +1866,7 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status");
   const sourceStatus = document.getElementById("source-status");
   if (!records.length) {
-    if (!options.silent) {
+    if (!options.silent && status) {
       status.textContent = "No valid rows found.";
       status.className = "err";
     }
@@ -1872,17 +1880,17 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   activeCommentTheme = null;
   activeReasonMode = "all";
   renderAll();
-  if (options.silent) {
+  if (status && options.silent) {
     status.textContent = "";
     status.className = "";
-  } else {
+  } else if (status) {
     status.className = "";
   }
   const excluded = records.length - DATA.length;
   const last = DATA.map(r => r.receivedAt).filter(Boolean).sort().pop();
   const lastText = last ? ` · latest ${new Date(last).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}` : "";
   const message = `Loaded ${DATA.length} rows from ${sourceLabel}` + (excluded ? ` · ${excluded} excluded` : "") + (errors.length ? ` · ${errors.length} row(s) skipped` : "") + lastText;
-  if (!options.silent) status.textContent = message;
+  if (!options.silent && status) status.textContent = message;
   if (sourceStatus) sourceStatus.textContent = message;
 }
 
@@ -1905,7 +1913,7 @@ async function loadExternalData(options = {}) {
     loadFeedbackJsonl(raw, "latest data file", options);
     return true;
   } catch (error) {
-    if (!options.silent) {
+    if (!options.silent && status) {
       status.textContent = `Could not load ${EXTERNAL_DATA_URL}. Using embedded data.`;
       status.className = "err";
     }
@@ -1913,22 +1921,32 @@ async function loadExternalData(options = {}) {
   }
 }
 
-document.getElementById("btn-load").onclick = () => {
-  const raw = document.getElementById("paste-area").value;
-  if (!raw.trim()) {
-    const s = document.getElementById("parse-status");
-    s.textContent = "Paste some data first."; s.className = "err";
-    return;
-  }
-  loadRaw(raw, "pasted text");
-};
-document.getElementById("btn-live").onclick = () => {
-  loadExternalData({ silent: false });
-};
-document.getElementById("btn-reset").onclick = () => {
-  document.getElementById("paste-area").value = "";
-  loadRaw(RAW_DATA, "embedded data");
-};
+const pasteButton = document.getElementById("btn-load");
+const liveButton = document.getElementById("btn-live");
+const resetButton = document.getElementById("btn-reset");
+if (pasteButton) {
+  pasteButton.onclick = () => {
+    const raw = document.getElementById("paste-area")?.value || "";
+    if (!raw.trim()) {
+      const s = document.getElementById("parse-status");
+      if (s) { s.textContent = "Paste some data first."; s.className = "err"; }
+      return;
+    }
+    loadRaw(raw, "pasted text");
+  };
+}
+if (liveButton) {
+  liveButton.onclick = () => {
+    loadExternalData({ silent: false });
+  };
+}
+if (resetButton) {
+  resetButton.onclick = () => {
+    const pasteArea = document.getElementById("paste-area");
+    if (pasteArea) pasteArea.value = "";
+    loadRaw(RAW_DATA, "embedded data");
+  };
+}
 
 document.querySelectorAll(".reason-mode").forEach(button => {
   button.onclick = () => {
@@ -1946,7 +1964,8 @@ document.getElementById("detail-report").addEventListener("toggle", event => {
 
 loadRaw(RAW_DATA, "embedded data", { silent: true });
 loadExternalData({ silent: true });
-document.getElementById("parse-status").textContent = "";
+const parseStatus = document.getElementById("parse-status");
+if (parseStatus) parseStatus.textContent = "";
 
 // ── Shared comment layer ─────────────────────────────────────
 (function() {
@@ -1964,8 +1983,7 @@ document.getElementById("parse-status").textContent = "";
     { id: "detail", label: "Detailed report", selectors: ["#detail-report"] },
     { id: "raters", label: "Verdicts by rater", selectors: ["#rater-chart-section"] },
     { id: "reasons", label: "Losing route reasons", selectors: ["#reasons-section"] },
-    { id: "themes", label: "Free-text themes", selectors: ["#comment-theme-section"] },
-    { id: "data", label: "Update data", selectors: ["#data-update-section"] }
+    { id: "themes", label: "Free-text themes", selectors: ["#comment-theme-section"] }
   ];
 
   let comments = [];
@@ -2000,7 +2018,7 @@ document.getElementById("parse-status").textContent = "";
   const onboardDismiss = document.getElementById("cmntOnboardDismiss");
   const selPopover = document.getElementById("selPopover");
   const selQuote = document.getElementById("selQuote");
-  const selAuthor = document.getElementById("selAuthor");
+  const selNameInput = document.getElementById("selNameInput");
   const selInput = document.getElementById("selInput");
   const selSend = document.getElementById("selSend");
 
@@ -2014,7 +2032,6 @@ document.getElementById("parse-status").textContent = "";
     if (el.closest("#rater-chart-section")) return "raters";
     if (el.closest("#reasons-section")) return "reasons";
     if (el.closest("#comment-theme-section")) return "themes";
-    if (el.closest("#data-update-section")) return "data";
     if (el.closest("#detail-report")) return "detail";
     if (el.closest("header, .overview, #priority-summary")) return "atGlance";
     return sectionFromViewport();
@@ -2147,7 +2164,7 @@ document.getElementById("parse-status").textContent = "";
     const name = getAuthor();
     authorName.textContent = name || "Anonymous";
     authorAvatar.textContent = initials(name);
-    selAuthor.textContent = name || "Anonymous";
+    if (selNameInput && document.activeElement !== selNameInput) selNameInput.value = name;
   }
 
   function formatTime(ts) {
@@ -2276,7 +2293,7 @@ document.getElementById("parse-status").textContent = "";
 
   function positionSelectionPopover(rect) {
     const width = Math.min(320, window.innerWidth - 24);
-    const height = 132;
+    const height = 176;
     let top = rect.top - height - 8;
     if (top < 8) top = rect.bottom + 8;
     let left = rect.left + rect.width / 2;
@@ -2300,10 +2317,13 @@ document.getElementById("parse-status").textContent = "";
   function postSelectionComment() {
     const body = selInput.value.trim();
     if (!body || !pendingSelection) return;
+    const typedName = selNameInput ? selNameInput.value.trim() : "";
+    if (typedName !== getAuthor()) setAuthor(typedName);
+    const author = typedName || "Anonymous";
     comments.push({
       id: Date.now() + Math.random().toString(36).slice(2),
       section: pendingSelection.section,
-      author: getAuthor() || "Anonymous",
+      author,
       text: body,
       quote: pendingSelection.quote,
       ts: Date.now()
@@ -2421,12 +2441,12 @@ document.getElementById("parse-status").textContent = "";
     sel.removeAllRanges();
     pendingSelection = { quote: selectedText, section };
     selQuote.textContent = selectedText.length > 160 ? selectedText.slice(0, 160) + "..." : selectedText;
-    selAuthor.textContent = getAuthor() || "Anonymous";
+    if (selNameInput) selNameInput.value = getAuthor();
     positionSelectionPopover(rect);
     selPopover.classList.add("visible");
     selInput.value = "";
     selSend.disabled = true;
-    setTimeout(() => selInput.focus(), 40);
+    setTimeout(() => (getAuthor() ? selInput : selNameInput).focus(), 40);
   });
 
   document.addEventListener("mousedown", event => {
@@ -2444,12 +2464,19 @@ document.getElementById("parse-status").textContent = "";
     if (event.key === "Escape") hideSelectionPopover();
   });
   selSend.addEventListener("click", postSelectionComment);
-
-  selAuthor.addEventListener("click", () => {
-    const name = prompt("Name to show on comments", getAuthor());
-    if (name !== null) setAuthor(name.trim());
-    selInput.focus();
-  });
+  if (selNameInput) {
+    selNameInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        selInput.focus();
+      }
+      if (event.key === "Escape") hideSelectionPopover();
+    });
+    selNameInput.addEventListener("blur", () => {
+      const typedName = selNameInput.value.trim();
+      if (typedName !== getAuthor()) setAuthor(typedName);
+    });
+  }
 
   updateAuthor();
   renderAll();
