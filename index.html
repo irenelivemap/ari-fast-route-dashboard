@@ -2155,13 +2155,20 @@ function commentHtml(r) {
     </div>`;
 }
 
+function byNewestComment(a, b) {
+  const aTime = Date.parse(a.receivedAt || "") || 0;
+  const bTime = Date.parse(b.receivedAt || "") || 0;
+  return bTime - aTime || (b.id || 0) - (a.id || 0);
+}
+
 function themeItemHtml(name, description, matches, denom, extraClass, showStats) {
   const pct = denom ? Math.round(matches.length / denom * 100) : 0;
   const width = Math.max(3, pct);
   const isActive = name === activeCommentTheme;
+  const sortedMatches = [...matches].sort(byNewestComment);
   const inlineComments = isActive ? `
     <div class="theme-comments">
-      ${matches.map(commentHtml).join("")}
+      ${sortedMatches.map(commentHtml).join("")}
     </div>` : "";
   const stats = showStats ? `
           <div class="theme-title">${esc(name)} <span>${matches.length}/${denom} · ${pct}%</span></div>
