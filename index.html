@@ -2751,7 +2751,7 @@ if (parseStatus) parseStatus.textContent = "";
     const count = activityCount(comments);
     badge.textContent = "";
     fabLabel.textContent = count ? `Comments (${count})` : "Add comment";
-    scope.textContent = "on: " + sectionLabel(activeSection || sectionFromViewport());
+    scope.textContent = "";
     submit.disabled = !text.value.trim();
   }
 
