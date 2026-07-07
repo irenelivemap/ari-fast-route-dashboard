@@ -1714,12 +1714,11 @@ function renderKpis(rows) {
   const lm = c["LiveMap"] || 0, gg = c["Google"] || 0;
   const tw = c["Both work well"] || 0, tp = c["Both work poorly"] || 0;
   const n = rows.length;
-  const atLeast = n ? Math.round((lm + tw + tp) / n * 100) : 0;
-  const matched = lm + tw + tp;
   const ties = tw + tp;
   const lmP = n ? Math.round(lm / n * 100) : 0;
   const ggP = n ? Math.round(gg / n * 100) : 0;
   const tiesP = n ? Math.round(ties / n * 100) : 0;
+  const atLeast = n ? lmP + tiesP : 0;
   document.getElementById("kpis").innerHTML = `
     <div class="kpi hero">
       <div class="summary-grid">
