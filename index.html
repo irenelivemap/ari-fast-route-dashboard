@@ -1709,6 +1709,20 @@ let charts = {};
 
 function fmtPct(x) { return Math.round(x) + "%"; }
 
+function roundedPercentParts(counts) {
+  const total = counts.reduce((sum, value) => sum + value, 0);
+  if (!total) return counts.map(() => 0);
+  const exact = counts.map(value => value / total * 100);
+  const rounded = exact.map(Math.floor);
+  let remainder = 100 - rounded.reduce((sum, value) => sum + value, 0);
+  exact
+    .map((value, index) => ({ index, fraction: value - Math.floor(value), count: counts[index] }))
+    .sort((a, b) => b.fraction - a.fraction || b.count - a.count || a.index - b.index)
+    .slice(0, remainder)
+    .forEach(item => { rounded[item.index] += 1; });
+  return rounded;
+}
+
 function subset() {
   return activeRater === "All" ? DATA : DATA.filter(r => r.rater === activeRater);
 }
@@ -1740,9 +1754,7 @@ function renderKpis(rows) {
   const tw = c["Both work well"] || 0, tp = c["Both work poorly"] || 0;
   const n = rows.length;
   const ties = tw + tp;
-  const lmP = n ? Math.round(lm / n * 100) : 0;
-  const ggP = n ? Math.round(gg / n * 100) : 0;
-  const tiesP = n ? Math.round(ties / n * 100) : 0;
+  const [lmP, ggP, tiesP] = roundedPercentParts([lm, gg, ties]);
   const atLeast = n ? lmP + tiesP : 0;
   document.getElementById("kpis").innerHTML = `
     <div class="kpi hero">
@@ -2021,11 +2033,14 @@ function renderRaterChart(rows) {
   const labels = raters.map(name => `${name} (${totals[name]})`);
   document.getElementById("rater-chart-section").classList.toggle("single-rater", single);
   document.getElementById("rater-box").style.height = single ? "112px" : Math.max(280, raters.length * 60 + 52) + "px";
+  const raterCounts = raters.map(name => VERDICTS.map(v => rows.filter(r => r.rater === name && r.verdict === v).length));
+  const raterPcts = raterCounts.map(roundedPercentParts);
   const dsets = VERDICTS.map(v => {
-    const raw = raters.map(name => rows.filter(r => r.rater === name && r.verdict === v).length);
+    const verdictIndex = VERDICTS.indexOf(v);
+    const raw = raterCounts.map(parts => parts[verdictIndex]);
     return {
       label: v,
-      data: raw.map((x, i) => totals[raters[i]] ? x / totals[raters[i]] * 100 : 0),
+      data: raterPcts.map(parts => parts[verdictIndex]),
       rawCounts: raw,
       backgroundColor: MUTED.has(v) ? SOFT[v] : COLORS[v],
       borderColor: MUTED.has(v) ? "transparent" : SOLID_BORDER[v],
