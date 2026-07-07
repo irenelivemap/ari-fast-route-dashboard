@@ -1076,7 +1076,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.4 6.4L3 16"/><path d="M3 16v5h5"/><path d="M3 12A9 9 0 0 1 18.4 5.6L21 8"/><path d="M21 8V3h-5"/></svg>
         <span>Check for new data</span>
       </button>
-      <span class="data-refresh-help">Auto-refreshes every 30 min.</span>
+      <span class="data-refresh-help" id="data-updated-at"></span>
       <span class="source-status" id="source-status" aria-live="polite"></span>
     </div>
   </header>
@@ -2229,6 +2229,7 @@ function renderAll(rebuildChips = true) {
 function loadRecords(records, errors, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status");
   const sourceStatus = document.getElementById("source-status");
+  const updatedAt = document.getElementById("data-updated-at");
   if (!records.length) {
     if (!options.silent && status) {
       status.textContent = "No valid rows found.";
@@ -2252,9 +2253,12 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   }
   const excluded = records.length - DATA.length;
   const last = DATA.map(r => r.receivedAt).filter(Boolean).sort().pop();
-  const lastText = last ? ` · latest ${new Date(last).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}` : "";
+  const lastDate = last ? new Date(last) : null;
+  const lastLabel = lastDate ? lastDate.toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  const lastText = lastLabel ? ` · latest ${lastLabel}` : "";
   const message = `Loaded ${DATA.length} rows from ${sourceLabel}` + (excluded ? ` · ${excluded} excluded` : "") + (errors.length ? ` · ${errors.length} row(s) skipped` : "") + lastText;
-  const sourceMessage = sourceLabel === "latest test data" ? `Up to date${lastText}` : message;
+  const sourceMessage = sourceLabel === "latest test data" ? "Up to date" : message;
+  if (updatedAt) updatedAt.textContent = lastLabel ? `Last updated ${lastLabel}` : "";
   if (!options.silent && status) status.textContent = message;
   if (!options.silent && sourceStatus) {
     sourceStatus.textContent = sourceMessage;
