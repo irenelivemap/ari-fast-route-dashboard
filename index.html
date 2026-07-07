@@ -875,17 +875,6 @@
   }
   .sel-action.visible { display: inline-flex; }
   .sel-action svg { flex: 0 0 auto; }
-  .sel-quote {
-    max-height: 76px;
-    overflow: hidden;
-    border-bottom: 1px solid rgba(255,255,255,.15);
-    background: rgba(255,255,255,.07);
-    color: rgba(255,255,255,.88);
-    padding: 10px 12px;
-    font-size: 13px;
-    line-height: 1.45;
-    font-style: italic;
-  }
   .sel-field {
     display: grid;
     gap: 6px;
@@ -1120,7 +1109,6 @@
 </button>
 
 <div class="sel-popover" id="selPopover" role="tooltip">
-  <div class="sel-quote" id="selQuote"></div>
   <div class="sel-field sel-comment-field">
     <label for="selInput">Your comment</label>
     <textarea id="selInput" placeholder="Write your comment..." maxlength="500" autocomplete="off" rows="3"></textarea>
@@ -2333,7 +2321,6 @@ loadExternalData({ silent: true }).then(loaded => {
   const onboardDismiss = document.getElementById("cmntOnboardDismiss");
   const selAction = document.getElementById("selAction");
   const selPopover = document.getElementById("selPopover");
-  const selQuote = document.getElementById("selQuote");
   const selNameInput = document.getElementById("selNameInput");
   const selNameField = document.getElementById("selNameField");
   const selAuthorSummary = document.getElementById("selAuthorSummary");
@@ -3198,7 +3185,6 @@ loadExternalData({ silent: true }).then(loaded => {
       const sel = window.getSelection();
       if (sel) sel.removeAllRanges();
     }
-    selQuote.textContent = pendingSelection.quote.length > 160 ? pendingSelection.quote.slice(0, 160) + "..." : pendingSelection.quote;
     selInput.value = "";
     selInput.closest(".sel-comment-field")?.classList.remove("needs-comment");
     selNameField?.classList.remove("needs-name");
