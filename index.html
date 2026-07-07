@@ -687,10 +687,11 @@
   }
   .cmnt-reply-actions {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
     margin-top: 6px;
   }
-  .cmnt-reply-actions .cmnt-heart { padding-right: 0; }
+  .cmnt-reply-actions .cmnt-heart { margin-left: auto; padding-right: 0; }
   .cmnt-reply-compose {
     display: grid;
     gap: 7px;
@@ -2275,7 +2276,8 @@ if (parseStatus) parseStatus.textContent = "";
   function normalizeReply(reply) {
     return {
       ...reply,
-      likedBy: Array.isArray(reply?.likedBy) ? reply.likedBy : []
+      likedBy: Array.isArray(reply?.likedBy) ? reply.likedBy : [],
+      replies: Array.isArray(reply?.replies) ? reply.replies.map(normalizeReply) : []
     };
   }
 
@@ -2292,7 +2294,8 @@ if (parseStatus) parseStatus.textContent = "";
       byId.set(next.id, {
         ...existing,
         ...next,
-        likedBy: [...new Set([...(existing.likedBy || []), ...(next.likedBy || [])])]
+        likedBy: [...new Set([...(existing.likedBy || []), ...(next.likedBy || [])])],
+        replies: mergeReplies(existing.replies, next.replies)
       });
     });
     return [...byId.values()].sort((x, y) => (x.ts || 0) - (y.ts || 0));
@@ -2430,7 +2433,30 @@ if (parseStatus) parseStatus.textContent = "";
   }
 
   function activityCount(rows = comments) {
-    return rows.reduce((count, comment) => count + 1 + (normalizeComment(comment).replies.length || 0), 0);
+    return rows.reduce((count, comment) => count + 1 + replyCountDeep(normalizeComment(comment).replies), 0);
+  }
+
+  function replyCountDeep(replies = []) {
+    return replies.reduce((count, reply) => {
+      const normalized = normalizeReply(reply);
+      return count + 1 + replyCountDeep(normalized.replies);
+    }, 0);
+  }
+
+  function updateReplyTree(replies = [], targetId, updater) {
+    let changed = false;
+    const nextReplies = replies.map(rawReply => {
+      const reply = normalizeReply(rawReply);
+      if (reply.id === targetId) {
+        changed = true;
+        return updater(reply);
+      }
+      const nested = updateReplyTree(reply.replies, targetId, updater);
+      if (!nested.changed) return reply;
+      changed = true;
+      return { ...reply, replies: nested.replies };
+    });
+    return { replies: nextReplies, changed };
   }
 
   function renderTabs() {
@@ -2456,10 +2482,52 @@ if (parseStatus) parseStatus.textContent = "";
       return;
     }
     const clientId = getClientId();
+    const renderReplyComposer = targetId => activeReplyId === targetId ? `
+      <div class="cmnt-reply-compose" data-reply-box="${safe(targetId)}">
+        <input type="text" data-reply-name="${safe(targetId)}" placeholder="Your name" maxlength="40" autocomplete="name" value="${safe(getAuthor())}">
+        <textarea data-reply-text="${safe(targetId)}" placeholder="Write a reply..."></textarea>
+        <div class="cmnt-reply-footer">
+          <button type="button" data-reply-cancel="${safe(targetId)}">Cancel</button>
+          <button class="primary" type="button" data-reply-submit="${safe(targetId)}">Post reply</button>
+        </div>
+      </div>` : "";
+    const renderReply = rawReply => {
+      const reply = normalizeReply(rawReply);
+      const replyLiked = reply.likedBy.includes(clientId);
+      const replyCount = replyCountDeep(reply.replies);
+      const replyEditKey = `reply:${reply.id}`;
+      const isEditingReply = activeEditKey === replyEditKey;
+      const canEditReply = isMine(reply);
+      return `
+        <div class="cmnt-reply">
+          <div class="cmnt-reply-head">
+            <span class="cmnt-reply-author">${safe(reply.author || "Anonymous")}</span>
+            <span>${formatTime(reply.ts)}${reply.editedTs ? " · edited" : ""}</span>
+          </div>
+          ${isEditingReply ? `
+            <div class="cmnt-edit-compose" data-edit-box="${safe(replyEditKey)}">
+              <textarea data-edit-text="${safe(replyEditKey)}">${safe(reply.text)}</textarea>
+              <div class="cmnt-edit-footer">
+                <button type="button" data-edit-cancel="${safe(replyEditKey)}">Cancel</button>
+                <button class="primary" type="button" data-edit-save="${safe(replyEditKey)}">Save</button>
+              </div>
+            </div>
+          ` : `<div class="cmnt-reply-text">${safe(reply.text)}</div>`}
+          ${isEditingReply ? "" : `<div class="cmnt-reply-actions">
+            <button class="cmnt-action" type="button" data-reply-toggle="${safe(reply.id)}">Reply${replyCount ? ` · ${replyCount}` : ""}</button>
+            ${canEditReply ? `<button class="cmnt-action" type="button" data-edit-start="${safe(replyEditKey)}">Edit</button>` : ""}
+            <button class="cmnt-heart${replyLiked ? " liked" : ""}" type="button" data-reply-like="${safe(reply.id)}" title="${replyLiked ? "Unlike" : "Like"}" aria-label="${replyLiked ? "Unlike reply" : "Like reply"}">
+              <span class="cmnt-heart-icon" aria-hidden="true">${replyLiked ? "♥" : "♡"}</span>${reply.likedBy.length ? `<span class="cmnt-heart-count">${reply.likedBy.length}</span>` : ""}
+            </button>
+          </div>`}
+          ${reply.replies.length ? `<div class="cmnt-replies">${reply.replies.map(renderReply).join("")}</div>` : ""}
+          ${renderReplyComposer(reply.id)}
+        </div>`;
+    };
     list.innerHTML = rows.map(rawComment => {
       const c = normalizeComment(rawComment);
       const liked = c.likedBy.includes(clientId);
-      const replyCount = c.replies.length;
+      const replyCount = replyCountDeep(c.replies);
       const commentEditKey = `comment:${c.id}`;
       const isEditingComment = activeEditKey === commentEditKey;
       const canEditComment = isMine(c);
@@ -2493,45 +2561,9 @@ if (parseStatus) parseStatus.textContent = "";
           </button>
         </div>`}
         ${replyCount ? `<div class="cmnt-replies">
-          ${c.replies.map(rawReply => {
-            const reply = normalizeReply(rawReply);
-            const replyLiked = reply.likedBy.includes(clientId);
-            const replyEditKey = `reply:${c.id}:${reply.id}`;
-            const isEditingReply = activeEditKey === replyEditKey;
-            const canEditReply = isMine(reply);
-            return `
-            <div class="cmnt-reply">
-              <div class="cmnt-reply-head">
-                <span class="cmnt-reply-author">${safe(reply.author || "Anonymous")}</span>
-                <span>${formatTime(reply.ts)}${reply.editedTs ? " · edited" : ""}</span>
-              </div>
-              ${isEditingReply ? `
-                <div class="cmnt-edit-compose" data-edit-box="${safe(replyEditKey)}">
-                  <textarea data-edit-text="${safe(replyEditKey)}">${safe(reply.text)}</textarea>
-                  <div class="cmnt-edit-footer">
-                    <button type="button" data-edit-cancel="${safe(replyEditKey)}">Cancel</button>
-                    <button class="primary" type="button" data-edit-save="${safe(replyEditKey)}">Save</button>
-                  </div>
-                </div>
-              ` : `<div class="cmnt-reply-text">${safe(reply.text)}</div>`}
-              ${isEditingReply ? "" : `<div class="cmnt-reply-actions">
-                ${canEditReply ? `<button class="cmnt-action" type="button" data-edit-start="${safe(replyEditKey)}">Edit</button>` : ""}
-                <button class="cmnt-heart${replyLiked ? " liked" : ""}" type="button" data-reply-like="${safe(reply.id)}" data-reply-parent="${safe(c.id)}" title="${replyLiked ? "Unlike" : "Like"}" aria-label="${replyLiked ? "Unlike reply" : "Like reply"}">
-                  <span class="cmnt-heart-icon" aria-hidden="true">${replyLiked ? "♥" : "♡"}</span>${reply.likedBy.length ? `<span class="cmnt-heart-count">${reply.likedBy.length}</span>` : ""}
-                </button>
-              </div>`}
-            </div>
-          `}).join("")}
+          ${c.replies.map(renderReply).join("")}
         </div>` : ""}
-        ${activeReplyId === c.id ? `
-          <div class="cmnt-reply-compose" data-reply-box="${safe(c.id)}">
-            <input type="text" data-reply-name="${safe(c.id)}" placeholder="Your name" maxlength="40" autocomplete="name" value="${safe(getAuthor())}">
-            <textarea data-reply-text="${safe(c.id)}" placeholder="Write a reply..."></textarea>
-            <div class="cmnt-reply-footer">
-              <button type="button" data-reply-cancel="${safe(c.id)}">Cancel</button>
-              <button class="primary" type="button" data-reply-submit="${safe(c.id)}">Post reply</button>
-            </div>
-          </div>` : ""}
+        ${renderReplyComposer(c.id)}
       </article>
     `}).join("");
     list.querySelectorAll("[data-delete]").forEach(button => {
@@ -2553,7 +2585,7 @@ if (parseStatus) parseStatus.textContent = "";
     list.querySelectorAll("[data-reply-like]").forEach(button => {
       button.addEventListener("click", event => {
         event.stopPropagation();
-        likeReply(button.dataset.replyParent, button.dataset.replyLike);
+        likeReply(button.dataset.replyLike);
       });
     });
     list.querySelectorAll("[data-reply-toggle]").forEach(button => {
@@ -2635,21 +2667,20 @@ if (parseStatus) parseStatus.textContent = "";
     if (changed) saveComments();
   }
 
-  function likeReply(commentId, replyId) {
+  function likeReply(replyId) {
     const clientId = getClientId();
     let changed = false;
     comments = comments.map(comment => {
-      if (comment.id !== commentId) return comment;
       const normalized = normalizeComment(comment);
-      const replies = normalized.replies.map(reply => {
-        if (reply.id !== replyId) return reply;
-        changed = true;
+      const updated = updateReplyTree(normalized.replies, replyId, reply => {
         if (reply.likedBy.includes(clientId)) {
           return { ...reply, likedBy: reply.likedBy.filter(id => id !== clientId) };
         }
         return { ...reply, likedBy: [...reply.likedBy, clientId] };
       });
-      return { ...normalized, replies };
+      if (!updated.changed) return normalized;
+      changed = true;
+      return { ...normalized, replies: updated.replies };
     });
     if (changed) saveComments();
   }
@@ -2670,17 +2701,16 @@ if (parseStatus) parseStatus.textContent = "";
       });
     }
     if (parts[0] === "reply") {
-      const commentId = parts[1];
-      const replyId = parts[2];
+      const replyId = parts[1];
       comments = comments.map(comment => {
         const normalized = normalizeComment(comment);
-        if (normalized.id !== commentId) return normalized;
-        const replies = normalized.replies.map(reply => {
-          if (reply.id !== replyId || !isMine(reply)) return reply;
+        const updated = updateReplyTree(normalized.replies, replyId, reply => {
+          if (!isMine(reply)) return reply;
           changed = true;
           return { ...reply, text: body, editedTs: Date.now() };
         });
-        return { ...normalized, replies };
+        if (!updated.changed) return normalized;
+        return { ...normalized, replies: updated.replies };
       });
     }
     if (!changed) return;
@@ -2701,12 +2731,19 @@ if (parseStatus) parseStatus.textContent = "";
       text: body,
       ts: Date.now(),
       clientId: getClientId(),
-      likedBy: []
+      likedBy: [],
+      replies: []
     };
     comments = comments.map(comment => {
-      if (comment.id !== commentId) return comment;
       const normalized = normalizeComment(comment);
-      return { ...normalized, replies: [...normalized.replies, reply] };
+      if (normalized.id === commentId) {
+        return { ...normalized, replies: [...normalized.replies, reply] };
+      }
+      const updated = updateReplyTree(normalized.replies, commentId, targetReply => {
+        return { ...targetReply, replies: [...targetReply.replies, reply] };
+      });
+      if (!updated.changed) return normalized;
+      return { ...normalized, replies: updated.replies };
     });
     activeReplyId = null;
     saveComments();
