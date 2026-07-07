@@ -943,6 +943,10 @@
     border-color: #D96D6D;
     background: rgba(217,109,109,.11);
   }
+  .sel-comment-field.needs-comment textarea {
+    border-color: #D96D6D;
+    background: rgba(217,109,109,.11);
+  }
   .sel-name-field .sel-help {
     grid-column: 2;
   }
@@ -954,6 +958,13 @@
     font-weight: 700;
   }
   .sel-name-field.needs-name .sel-error { display: block; }
+  .sel-comment-field .sel-error {
+    display: none;
+    color: #FFB8B8;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .sel-comment-field.needs-comment .sel-error { display: block; }
   .sel-field input:focus,
   .sel-field textarea:focus {
     border-color: rgba(255,255,255,.55);
@@ -1113,6 +1124,7 @@
   <div class="sel-field sel-comment-field">
     <label for="selInput">Your comment</label>
     <textarea id="selInput" placeholder="Write your comment..." maxlength="500" autocomplete="off" rows="3"></textarea>
+    <div class="sel-error">Write a comment to post.</div>
   </div>
   <div class="sel-author-summary" id="selAuthorSummary" hidden>
     <span>Posting as <strong id="selAuthorSavedName"></strong></span>
@@ -1125,7 +1137,7 @@
     <div class="sel-help">Only needed once. Saved for next time.</div>
   </div>
   <div class="sel-footer">
-    <button type="button" id="selSend" disabled>Post</button>
+    <button type="button" id="selSend">Post</button>
   </div>
 </div>
 
@@ -3026,7 +3038,8 @@ if (parseStatus) parseStatus.textContent = "";
     selAction.classList.remove("visible");
     selPopover.classList.remove("visible");
     selInput.value = "";
-    selSend.disabled = true;
+    selInput.closest(".sel-comment-field")?.classList.remove("needs-comment");
+    selNameField?.classList.remove("needs-name");
     selectionNameEditing = false;
     pendingSelection = null;
     removeActiveHighlight();
@@ -3123,7 +3136,7 @@ if (parseStatus) parseStatus.textContent = "";
     if (selAuthorSummary) selAuthorSummary.hidden = editingName;
     if (selAuthorSavedName) selAuthorSavedName.textContent = savedName;
     if (hasName) selNameField?.classList.remove("needs-name");
-    selSend.disabled = !hasComment;
+    if (hasComment) selInput.closest(".sel-comment-field")?.classList.remove("needs-comment");
   }
 
   function updateSelectionAction() {
@@ -3186,6 +3199,8 @@ if (parseStatus) parseStatus.textContent = "";
     }
     selQuote.textContent = pendingSelection.quote.length > 160 ? pendingSelection.quote.slice(0, 160) + "..." : pendingSelection.quote;
     selInput.value = "";
+    selInput.closest(".sel-comment-field")?.classList.remove("needs-comment");
+    selNameField?.classList.remove("needs-name");
     selectionNameEditing = !getAuthor().trim();
     if (selNameInput) selNameInput.value = getAuthor();
     selPopover.classList.add("visible");
@@ -3210,7 +3225,12 @@ if (parseStatus) parseStatus.textContent = "";
 
   function postSelectionComment() {
     const body = selInput.value.trim();
-    if (!body || !pendingSelection) return;
+    if (!pendingSelection) return;
+    if (!body) {
+      selInput.closest(".sel-comment-field")?.classList.add("needs-comment");
+      selInput.focus();
+      return;
+    }
     const typedName = selectionNameEditing ? (selNameInput ? selNameInput.value.trim() : "") : getAuthor().trim();
     if (!typedName) {
       selectionNameEditing = true;
