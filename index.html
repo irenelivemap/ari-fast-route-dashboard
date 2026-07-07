@@ -2714,7 +2714,7 @@ if (parseStatus) parseStatus.textContent = "";
 
   function renderChrome() {
     const count = activityCount(comments);
-    badge.textContent = count ? String(count) : "";
+    badge.textContent = "";
     fabLabel.textContent = count ? `Comments (${count})` : "Add comment";
     scope.textContent = "on: " + sectionLabel(activeSection || sectionFromViewport());
     submit.disabled = !text.value.trim();
