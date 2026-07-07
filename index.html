@@ -939,9 +939,21 @@
     padding: 5px 8px;
     font-size: 12px;
   }
+  .sel-name-field.needs-name input {
+    border-color: #D96D6D;
+    background: rgba(217,109,109,.11);
+  }
   .sel-name-field .sel-help {
     grid-column: 2;
   }
+  .sel-name-field .sel-error {
+    grid-column: 2;
+    display: none;
+    color: #FFB8B8;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .sel-name-field.needs-name .sel-error { display: block; }
   .sel-field input:focus,
   .sel-field textarea:focus {
     border-color: rgba(255,255,255,.55);
@@ -1107,8 +1119,9 @@
     <button type="button" id="selAuthorChange">Change</button>
   </div>
   <div class="sel-field sel-name-field" id="selNameField">
-    <label for="selNameInput">Your name</label>
+    <label for="selNameInput">Your name *</label>
     <input id="selNameInput" placeholder="Add your name..." maxlength="40" autocomplete="name">
+    <div class="sel-error" id="selNameError">Add your name to post.</div>
     <div class="sel-help">Only needed once. Saved for next time.</div>
   </div>
   <div class="sel-footer">
@@ -3109,7 +3122,8 @@ if (parseStatus) parseStatus.textContent = "";
     if (selNameField) selNameField.hidden = !editingName;
     if (selAuthorSummary) selAuthorSummary.hidden = editingName;
     if (selAuthorSavedName) selAuthorSavedName.textContent = savedName;
-    selSend.disabled = !(hasComment && hasName);
+    if (hasName) selNameField?.classList.remove("needs-name");
+    selSend.disabled = !hasComment;
   }
 
   function updateSelectionAction() {
@@ -3201,6 +3215,7 @@ if (parseStatus) parseStatus.textContent = "";
     if (!typedName) {
       selectionNameEditing = true;
       renderSelectionComposer();
+      selNameField?.classList.add("needs-name");
       selNameInput?.focus();
       return;
     }
