@@ -26,6 +26,14 @@ https://tbt-routing.paas.livemap.sh/api/v1/field/feedback
 4. Deploy.
 5. Copy the deployed URL.
 
+To let the dashboard save refreshed data for everyone, add this environment variable in Vercel:
+
+```text
+GITHUB_WORKFLOW_TOKEN=your GitHub token
+```
+
+The token needs permission to dispatch repository workflows for `irenelivemap/ari-fast-route-dashboard`. With a fine-grained GitHub token, grant **Actions: Read and write** on this repository.
+
 The dashboard expects a URL shaped like:
 
 ```text

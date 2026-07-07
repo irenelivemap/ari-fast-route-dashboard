@@ -2257,7 +2257,7 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   const lastLabel = lastDate ? lastDate.toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   const lastText = lastLabel ? ` · latest ${lastLabel}` : "";
   const message = `Loaded ${DATA.length} rows from ${sourceLabel}` + (excluded ? ` · ${excluded} excluded` : "") + (errors.length ? ` · ${errors.length} row(s) skipped` : "") + lastText;
-  const sourceMessage = sourceLabel === "latest test data" ? "Up to date" : message;
+  const sourceMessage = sourceLabel === "latest test data" ? (options.sourceMessage || "Up to date") : message;
   if (updatedAt) updatedAt.textContent = lastLabel ? `Last updated ${lastLabel}` : "";
   if (!options.silent && status) status.textContent = message;
   if (!options.silent && sourceStatus) {
@@ -2276,6 +2276,12 @@ function loadFeedbackJsonl(raw, sourceLabel, options = {}) {
   loadRecords(records, errors, sourceLabel, options);
 }
 
+function dataSaveMessage(status) {
+  if (status === "queued") return "Saved for everyone";
+  if (status === "failed") return "Loaded latest, but could not save";
+  return "Up to date";
+}
+
 async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status") || document.getElementById("source-status");
   const fetchUrl = options.cacheBust ? `${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}` : url;
@@ -2283,7 +2289,8 @@ async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
     const res = await fetch(fetchUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const raw = await res.text();
-    loadFeedbackJsonl(raw, sourceLabel, options);
+    const saveStatus = res.headers.get("X-Dashboard-Data-Save") || "";
+    loadFeedbackJsonl(raw, sourceLabel, { ...options, sourceMessage: dataSaveMessage(saveStatus) });
     return true;
   } catch (error) {
     if (!options.silent && status) {
