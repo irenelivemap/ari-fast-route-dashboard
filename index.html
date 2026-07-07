@@ -2662,6 +2662,7 @@ if (parseStatus) parseStatus.textContent = "";
     list.querySelectorAll("[data-delete]").forEach(button => {
       button.addEventListener("click", event => {
         event.stopPropagation();
+        if (!confirm("Delete this comment?")) return;
         activeMenuKey = null;
         comments = comments.map(comment => {
           const normalized = normalizeComment(comment);
@@ -2674,6 +2675,7 @@ if (parseStatus) parseStatus.textContent = "";
     list.querySelectorAll("[data-reply-delete]").forEach(button => {
       button.addEventListener("click", event => {
         event.stopPropagation();
+        if (!confirm("Delete this reply?")) return;
         activeMenuKey = null;
         deleteReply(button.dataset.replyDelete);
       });
