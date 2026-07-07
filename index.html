@@ -539,13 +539,30 @@
   .cmnt-item-head {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 10px;
     margin-bottom: 7px;
     color: var(--ink-3);
     font-size: 12px;
   }
   .cmnt-item-author { color: var(--livemap); font-weight: 700; }
-  .cmnt-item-meta { display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; }
+  .cmnt-item-meta { display: inline-flex; gap: 8px; align-items: center; min-width: 0; }
+  .cmnt-item-tools { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; white-space: nowrap; }
+  .cmnt-heart {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    border: 0;
+    background: transparent;
+    color: var(--ink-3);
+    padding: 2px 3px;
+    font: 700 12px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .cmnt-heart:hover,
+  .cmnt-heart.liked { color: var(--livemap); }
+  .cmnt-heart-icon { font-size: 17px; line-height: 1; }
+  .cmnt-heart-count { transform: translateY(1px); }
   .cmnt-delete {
     border: 0;
     background: transparent;
@@ -601,12 +618,6 @@
     cursor: pointer;
   }
   .cmnt-action:hover { border-color: var(--ink-3); color: var(--ink); background: #F6F6F0; }
-  .cmnt-action.liked {
-    border-color: var(--livemap);
-    background: var(--livemap-soft);
-    color: var(--livemap);
-    cursor: default;
-  }
   .cmnt-replies {
     display: grid;
     gap: 8px;
@@ -2379,9 +2390,14 @@ if (parseStatus) parseStatus.textContent = "";
       return `
       <article class="cmnt-item" data-id="${safe(c.id)}">
         <div class="cmnt-item-head">
-          <span class="cmnt-item-author">${safe(c.author || "Anonymous")}</span>
           <span class="cmnt-item-meta">
+            <span class="cmnt-item-author">${safe(c.author || "Anonymous")}</span>
             <span>${formatTime(c.ts)}</span>
+          </span>
+          <span class="cmnt-item-tools">
+            <button class="cmnt-heart${liked ? " liked" : ""}" type="button" data-like="${safe(c.id)}" title="${liked ? "Unlike" : "Like"}" aria-label="${liked ? "Unlike comment" : "Like comment"}">
+              <span class="cmnt-heart-icon" aria-hidden="true">${liked ? "♥" : "♡"}</span>${c.likedBy.length ? `<span class="cmnt-heart-count">${c.likedBy.length}</span>` : ""}
+            </button>
             <button class="cmnt-delete" type="button" title="Delete" data-delete="${safe(c.id)}">×</button>
           </span>
         </div>
@@ -2389,7 +2405,6 @@ if (parseStatus) parseStatus.textContent = "";
         <div class="cmnt-text">${safe(c.text)}</div>
         ${activeSection === null ? `<span class="cmnt-section">${safe(sectionLabel(c.section))}</span>` : ""}
         <div class="cmnt-actions">
-          <button class="cmnt-action${liked ? " liked" : ""}" type="button" data-like="${safe(c.id)}">${liked ? "Liked" : "Like"}${c.likedBy.length ? ` · ${c.likedBy.length}` : ""}</button>
           <button class="cmnt-action" type="button" data-reply-toggle="${safe(c.id)}">Reply${replyCount ? ` · ${replyCount}` : ""}</button>
         </div>
         ${replyCount ? `<div class="cmnt-replies">
@@ -2463,8 +2478,10 @@ if (parseStatus) parseStatus.textContent = "";
     comments = comments.map(comment => {
       if (comment.id !== commentId) return comment;
       const normalized = normalizeComment(comment);
-      if (normalized.likedBy.includes(clientId)) return normalized;
       changed = true;
+      if (normalized.likedBy.includes(clientId)) {
+        return { ...normalized, likedBy: normalized.likedBy.filter(id => id !== clientId) };
+      }
       return { ...normalized, likedBy: [...normalized.likedBy, clientId] };
     });
     if (changed) saveComments();
