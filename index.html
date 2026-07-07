@@ -1218,6 +1218,7 @@ const RATER_ALIASES = { "martijn": "Martijn" };
 const EXCLUDED_RATERS = new Set([]);
 const REASONS = ["Misses shortcut", "Unclear shortcut", "Longer distance", "Longer time", "More turns", "Crossing friction", "More elevation", "More stairs", "Other"];
 const EXTERNAL_DATA_URL = "data/feedback.jsonl";
+const EXTERNAL_DATA_META_URL = "data/feedback-meta.json";
 const DASHBOARD_DATA_SERVICE_URL = "https://ari-fast-route-dashboard-data.vercel.app/api/ari-fast-routes";
 const LIVE_REASON_LABELS = {
   longer_time: "Longer time",
@@ -2237,6 +2238,12 @@ function formatDataTimestamp(date) {
   });
 }
 
+function setDataCheckedAt(date) {
+  const updatedAt = document.getElementById("data-updated-at");
+  if (!updatedAt || !date || Number.isNaN(date.getTime())) return;
+  updatedAt.textContent = `Last checked ${formatDataTimestamp(date)}`;
+}
+
 function loadRecords(records, errors, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status");
   const sourceStatus = document.getElementById("source-status");
@@ -2270,7 +2277,11 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   const lastText = lastLabel ? ` · latest ${lastLabel}` : "";
   const message = `Loaded ${DATA.length} rows from ${sourceLabel}` + (excluded ? ` · ${excluded} excluded` : "") + (errors.length ? ` · ${errors.length} row(s) skipped` : "") + lastText;
   const sourceMessage = sourceLabel === "latest test data" ? (options.sourceMessage || "Up to date") : message;
-  if (updatedAt) updatedAt.textContent = checkedLabel ? `Last checked ${checkedLabel}` : (lastLabel ? `Data through ${lastLabel}` : "");
+  if (checkedLabel) {
+    setDataCheckedAt(options.checkedAt);
+  } else if (updatedAt) {
+    updatedAt.textContent = lastLabel ? `Data through ${lastLabel}` : "";
+  }
   if (!options.silent && status) status.textContent = message;
   if (!options.silent && sourceStatus) {
     sourceStatus.textContent = sourceMessage;
@@ -2301,7 +2312,11 @@ async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const raw = await res.text();
     const saveStatus = res.headers.get("X-Dashboard-Data-Save") || "";
-    loadFeedbackJsonl(raw, sourceLabel, { ...options, checkedAt: new Date(), sourceMessage: dataSaveMessage(saveStatus) });
+    loadFeedbackJsonl(raw, sourceLabel, {
+      ...options,
+      checkedAt: options.markCheckedAt ? new Date() : options.checkedAt,
+      sourceMessage: dataSaveMessage(saveStatus)
+    });
     return true;
   } catch (error) {
     if (!options.silent && status) {
@@ -2316,8 +2331,28 @@ async function loadExternalData(options = {}) {
   return loadFeedbackFromUrl(EXTERNAL_DATA_URL, "latest published data file", options);
 }
 
+async function loadExternalDataMeta(options = {}) {
+  try {
+    const url = `${EXTERNAL_DATA_META_URL}?_=${Date.now()}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const meta = await res.json();
+    if (meta.checked_at) setDataCheckedAt(new Date(meta.checked_at));
+    return true;
+  } catch (error) {
+    if (!options.silent) {
+      const status = document.getElementById("source-status");
+      if (status) {
+        status.textContent = "Could not load data timestamp.";
+        status.className = "source-status err";
+      }
+    }
+    return false;
+  }
+}
+
 async function loadLatestTestData(options = {}) {
-  return loadFeedbackFromUrl(`${DASHBOARD_DATA_SERVICE_URL}/refresh`, "latest test data", options);
+  return loadFeedbackFromUrl(`${DASHBOARD_DATA_SERVICE_URL}/refresh`, "latest test data", { ...options, markCheckedAt: true });
 }
 
 const pasteButton = document.getElementById("btn-load");
@@ -2384,8 +2419,9 @@ document.getElementById("detail-report").addEventListener("toggle", event => {
 
 const parseStatus = document.getElementById("parse-status");
 if (parseStatus) parseStatus.textContent = "";
-loadExternalData({ silent: true }).then(loaded => {
+loadExternalData({ silent: true }).then(async loaded => {
   if (!loaded) loadRaw(RAW_DATA, "embedded data", { silent: true });
+  else await loadExternalDataMeta({ silent: true });
   if (parseStatus) parseStatus.textContent = "";
 });
 

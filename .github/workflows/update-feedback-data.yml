@@ -21,15 +21,18 @@ jobs:
           curl --fail --location --silent --show-error \
             "https://tbt-routing.paas.livemap.sh/api/v1/field/feedback" \
             --output data/feedback.jsonl
+          rows=$(wc -l < data/feedback.jsonl | tr -d ' ')
+          checked_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          printf '{\n  "checked_at": "%s",\n  "row_count": %s,\n  "source_url": "https://tbt-routing.paas.livemap.sh/api/v1/field/feedback"\n}\n' "$checked_at" "$rows" > data/feedback-meta.json
 
       - name: Commit changes
         run: |
-          if git diff --quiet -- data/feedback.jsonl; then
+          if git diff --quiet -- data/feedback.jsonl data/feedback-meta.json; then
             echo "No data changes."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/feedback.jsonl
+          git add data/feedback.jsonl data/feedback-meta.json
           git commit -m "Update benchmark feedback data"
           git push
