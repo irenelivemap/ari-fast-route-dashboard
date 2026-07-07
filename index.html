@@ -2314,9 +2314,11 @@ if (pasteButton) {
 if (latestTestsButton) {
   latestTestsButton.onclick = async () => {
     const status = document.getElementById("source-status") || document.getElementById("parse-status");
-    const originalText = latestTestsButton.textContent;
+    const label = latestTestsButton.querySelector("span");
+    const originalText = label ? label.textContent : latestTestsButton.textContent;
     latestTestsButton.disabled = true;
-    latestTestsButton.textContent = "Loading...";
+    if (label) label.textContent = "Checking...";
+    else latestTestsButton.textContent = "Checking...";
     if (status) {
       status.textContent = "Checking for new benchmark data...";
       status.className = "source-status";
@@ -2331,7 +2333,8 @@ if (latestTestsButton) {
       status.className = "source-status err";
     }
     latestTestsButton.disabled = false;
-    latestTestsButton.textContent = originalText;
+    if (label) label.textContent = originalText;
+    else latestTestsButton.textContent = originalText;
   };
 }
 if (resetButton) {
