@@ -2980,6 +2980,64 @@ if (parseStatus) parseStatus.textContent = "";
     return { left, top, right, bottom, width: right - left, height: bottom - top };
   }
 
+  function selectedRangeInsideBlock(range, block) {
+    if (!block || !range.intersectsNode(block)) return null;
+    const blockRange = document.createRange();
+    blockRange.selectNodeContents(block);
+    const clipped = range.cloneRange();
+    try {
+      if (clipped.compareBoundaryPoints(Range.START_TO_START, blockRange) < 0) {
+        clipped.setStart(blockRange.startContainer, blockRange.startOffset);
+      }
+      if (clipped.compareBoundaryPoints(Range.END_TO_END, blockRange) > 0) {
+        clipped.setEnd(blockRange.endContainer, blockRange.endOffset);
+      }
+      return clipped.collapsed ? null : clipped;
+    } catch(e) {
+      return null;
+    }
+  }
+
+  function normalizeSelection(sel) {
+    const range = sel.getRangeAt(0).cloneRange();
+    const selectedText = sel.toString().trim();
+    const blockSelector = "h1, h2, h3, h4, p, li, blockquote, figcaption, .stat, .priority-item, .theme-row, .reason-rank-row, .stack-row";
+    const blocks = Array.from(document.querySelectorAll(blockSelector))
+      .filter(block => {
+        try {
+          return !block.closest("#cmntDrawer, #selPopover, #selAction, .cmnt-onboard") && range.intersectsNode(block);
+        } catch(e) {
+          return false;
+        }
+      })
+      .map(block => {
+        const clippedRange = selectedRangeInsideBlock(range, block);
+        const text = clippedRange?.toString().trim() || "";
+        return { block, range: clippedRange, text };
+      })
+      .filter(item => item.text.length >= 3)
+      .sort((a, b) => b.text.length - a.text.length);
+
+    if (blocks.length > 1) {
+      const best = blocks[0];
+      const rect = selectionRect(best.range);
+      return {
+        quote: best.text,
+        section: sectionForElement(best.block),
+        rect,
+        range: best.range
+      };
+    }
+
+    const rect = selectionRect(range);
+    return {
+      quote: selectedText,
+      section: sectionForElement(elementFromSelectionNode(sel.anchorNode)),
+      rect,
+      range
+    };
+  }
+
   function renderSelectionComposer() {
     const hasComment = !!selInput.value.trim();
     const hasName = !selNameInput || !!selNameInput.value.trim();
@@ -2998,13 +3056,11 @@ if (parseStatus) parseStatus.textContent = "";
     }
     const selectedText = sel.toString().trim();
     if (selectedText.length < 3 || !selectionAllowedInReport(sel)) return;
-    const range = sel.getRangeAt(0).cloneRange();
-    const rect = selectionRect(range);
-    if (!rect || rect.width <= 0 || rect.height <= 0) return;
-    const section = sectionForElement(elementFromSelectionNode(sel.anchorNode));
-    pendingSelection = { quote: selectedText, section, rect, range };
+    const normalized = normalizeSelection(sel);
+    if (!normalized.rect || normalized.rect.width <= 0 || normalized.rect.height <= 0) return;
+    pendingSelection = normalized;
     selPopover.classList.remove("visible");
-    positionSelectionAction(rect);
+    positionSelectionAction(normalized.rect);
     selAction.classList.add("visible");
   }
 
