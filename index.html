@@ -107,6 +107,7 @@
   .chip:hover { border-color: var(--ink-3); }
   .chip:focus-visible { outline: 2px solid var(--livemap); outline-offset: 2px; }
   .chip.on { border-color: var(--ink); color: var(--ink); background: var(--ink); color: #fff; }
+  .reason-filter { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 18px; }
 
   .overview { margin-top: 20px; }
   .kpi {
@@ -142,7 +143,7 @@
   .priority-summary p { color: var(--ink-2); max-width: 112ch; font-size: 16px; }
   .priority-list {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     margin-top: 16px;
   }
@@ -225,6 +226,30 @@
   .legend-swatch.tie-good { background: var(--tie-good-soft); border: 1px dashed var(--tie-good); }
   .legend-swatch.tie-poor { background: var(--tie-poor-soft); border: 1px dashed var(--tie-poor); }
   .chart-box { position: relative; width: 100%; }
+  .reason-compare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 34px; align-items: start; }
+  .reason-compare-panel h3 { font-size: 18px; font-weight: 600; margin-bottom: 18px; }
+  .reason-compare-panel p { color: var(--ink-3); font-size: 14px; margin-bottom: 14px; }
+  .reason-rank { display: grid; gap: 12px; }
+  .reason-rank-row { display: grid; grid-template-columns: minmax(145px, 0.9fr) minmax(120px, 1.2fr) auto; gap: 12px; align-items: center; }
+  .reason-rank-label { font-weight: 500; color: var(--ink); }
+  .reason-rank-label.shared { font-weight: 700; }
+  .reason-rank-track { height: 26px; border-radius: 4px; background: #DCDAD0; overflow: hidden; }
+  .reason-rank-fill { height: 100%; border-radius: inherit; min-width: 3px; }
+  .reason-rank-fill.ari { background: var(--livemap); }
+  .reason-rank-fill.google { background: var(--google); }
+  .reason-rank-fill.ari.muted { background: #E6A8EA; }
+  .reason-rank-fill.google.muted { background: #9BC0F4; }
+  .reason-rank-fill.other {
+    background: #F1F1EA;
+    border: 1px dashed #565B56;
+  }
+  .reason-rank-fill.other.muted {
+    background: #F8F8F2;
+    border-color: #A9AEA7;
+  }
+  .reason-rank-value { color: #49514B; font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .reason-rank-base { color: #8A918A; font-weight: 500; }
+  @media (max-width: 860px) { .reason-compare-grid { grid-template-columns: 1fr; } }
   .comment { border-top: 1px dotted var(--line); padding: 14px 2px; }
   .comment:first-of-type { border-top: none; }
   .comment .who { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: var(--ink-3); margin-bottom: 5px; }
@@ -295,6 +320,400 @@
   button.btn:focus-visible { outline: 2px solid var(--livemap); outline-offset: 2px; }
   #parse-status { font-size: 14px; color: var(--ink-2); }
   #parse-status.err { color: var(--tie-poor); }
+  .source-status { display: block; margin-top: 8px; font-size: 13px; color: var(--ink-3); }
+
+  .cmnt-fab {
+    position: fixed;
+    right: 26px;
+    bottom: 26px;
+    z-index: 80;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    background: var(--ink);
+    color: #fff;
+    padding: 11px 17px 11px 14px;
+    font: 600 15px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(28, 34, 31, 0.18);
+  }
+  .cmnt-fab:hover { background: #303833; }
+  .cmnt-fab svg { flex: 0 0 auto; }
+  .cmnt-badge {
+    min-width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--livemap);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 0 6px;
+  }
+  .cmnt-badge:empty { display: none; }
+  .cmnt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 88;
+    display: none;
+    background: rgba(28, 34, 31, 0.22);
+  }
+  .cmnt-overlay.visible { display: block; }
+  .cmnt-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 90;
+    width: 410px;
+    max-width: 100vw;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    border-left: 1px solid var(--line);
+    box-shadow: -20px 0 50px rgba(28, 34, 31, 0.16);
+    transform: translateX(105%);
+    transition: transform .22s ease;
+  }
+  .cmnt-drawer.open { transform: translateX(0); }
+  .cmnt-head {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 14px;
+    background: var(--ink);
+    color: #fff;
+  }
+  .cmnt-author-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 190px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    padding: 3px 8px 3px 3px;
+    font: inherit;
+    cursor: pointer;
+  }
+  .cmnt-author-chip:hover { background: rgba(255,255,255,.11); }
+  .cmnt-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--livemap);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .cmnt-author-name {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: rgba(255,255,255,.88);
+    font-size: 13px;
+  }
+  .cmnt-author-edit {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 14px;
+    z-index: 4;
+    display: none;
+    width: 230px;
+    padding: 11px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--card);
+    box-shadow: 0 12px 28px rgba(28,34,31,.14);
+  }
+  .cmnt-author-edit.open { display: grid; gap: 8px; }
+  .cmnt-author-edit label { color: var(--ink-3); font-size: 12px; font-weight: 600; }
+  .cmnt-author-edit input {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 7px 9px;
+    font: inherit;
+    font-size: 14px;
+  }
+  .cmnt-author-edit button {
+    justify-self: end;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    background: var(--ink);
+    color: #fff;
+    padding: 6px 13px;
+    font: 600 13px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .cmnt-sync {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255,255,255,.64);
+    font-size: 12px;
+  }
+  .cmnt-sync-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #65B66D;
+  }
+  .cmnt-sync-dot.syncing { background: #D6B14A; animation: cmntPulse .8s ease-in-out infinite alternate; }
+  .cmnt-close {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: rgba(255,255,255,.78);
+    font-size: 20px;
+    cursor: pointer;
+  }
+  .cmnt-close:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .cmnt-tabs {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--card);
+  }
+  .cmnt-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--ink-2);
+    padding: 6px 11px;
+    font: 500 13px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .cmnt-tab:hover { border-color: var(--ink-3); color: var(--ink); }
+  .cmnt-tab.active { border-color: var(--livemap); background: var(--livemap-soft); color: var(--livemap); }
+  .cmnt-tab-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--livemap);
+  }
+  .cmnt-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 15px 16px;
+    display: grid;
+    align-content: start;
+    gap: 11px;
+  }
+  .cmnt-empty {
+    color: var(--ink-3);
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.55;
+    padding: 30px 10px;
+  }
+  .cmnt-item {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--card);
+    padding: 12px 13px;
+  }
+  .cmnt-item-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 7px;
+    color: var(--ink-3);
+    font-size: 12px;
+  }
+  .cmnt-item-author { color: var(--livemap); font-weight: 700; }
+  .cmnt-item-meta { display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; }
+  .cmnt-delete {
+    border: 0;
+    background: transparent;
+    color: var(--ink-3);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  .cmnt-delete:hover { color: var(--tie-poor); }
+  .cmnt-quote {
+    margin-bottom: 8px;
+    border-left: 3px solid var(--livemap);
+    border-radius: 0 6px 6px 0;
+    background: var(--livemap-soft);
+    color: var(--ink);
+    padding: 7px 10px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.45;
+    cursor: pointer;
+  }
+  .cmnt-text {
+    white-space: pre-wrap;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .cmnt-section {
+    display: inline-block;
+    margin-top: 9px;
+    border-radius: 5px;
+    background: #F1F1EA;
+    color: var(--ink-3);
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .cmnt-compose {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--line);
+    background: var(--card);
+    padding: 13px 16px 15px;
+  }
+  .cmnt-compose textarea {
+    min-height: 86px;
+    font-size: 14px;
+  }
+  .cmnt-compose-footer {
+    margin-top: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .cmnt-scope {
+    color: var(--ink-3);
+    font-size: 12px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .cmnt-submit {
+    border: 1px solid var(--livemap);
+    border-radius: 999px;
+    background: var(--livemap);
+    color: #fff;
+    padding: 8px 16px;
+    font: 600 14px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .cmnt-submit:disabled { opacity: .45; cursor: default; }
+  .cmnt-onboard {
+    position: fixed;
+    right: 26px;
+    bottom: 82px;
+    z-index: 79;
+    width: 280px;
+    border-radius: 12px;
+    background: var(--ink);
+    color: #fff;
+    padding: 14px 15px;
+    box-shadow: 0 12px 34px rgba(28, 34, 31, .22);
+  }
+  .cmnt-onboard h3 { font-size: 14px; margin-bottom: 8px; }
+  .cmnt-onboard p { color: rgba(255,255,255,.82); font-size: 13px; line-height: 1.45; margin-bottom: 10px; }
+  .cmnt-onboard button {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    background: rgba(255,255,255,.16);
+    color: #fff;
+    padding: 7px 10px;
+    font: 600 12px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .sel-popover {
+    position: fixed;
+    z-index: 100;
+    display: none;
+    width: min(320px, calc(100vw - 24px));
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--ink);
+    color: #fff;
+    box-shadow: 0 12px 34px rgba(28, 34, 31, .25);
+    transform: translateX(-50%);
+  }
+  .sel-popover.visible { display: block; }
+  .sel-quote {
+    max-height: 76px;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.07);
+    color: rgba(255,255,255,.88);
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    font-style: italic;
+  }
+  .sel-byline {
+    color: rgba(255,255,255,.58);
+    padding: 6px 12px 0;
+    font-size: 12px;
+  }
+  .sel-author {
+    color: rgba(255,255,255,.88);
+    border-bottom: 1px dashed rgba(255,255,255,.4);
+    cursor: pointer;
+  }
+  .sel-row { display: flex; align-items: stretch; }
+  .sel-row input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    padding: 10px 12px;
+    font: inherit;
+    outline: none;
+  }
+  .sel-row input::placeholder { color: rgba(255,255,255,.45); }
+  .sel-row button {
+    border: 0;
+    background: var(--livemap);
+    color: #fff;
+    padding: 0 13px;
+    font: 700 12px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .sel-row button:disabled { opacity: .45; cursor: default; }
+  mark.sel-active-highlight {
+    background: rgba(162, 28, 175, .18);
+    border-bottom: 2px solid var(--livemap);
+    color: inherit;
+    padding: 0;
+  }
+  mark.cmnt-jump-highlight {
+    background: rgba(162, 28, 175, .28);
+    border-bottom: 2px solid var(--livemap);
+    color: inherit;
+    padding: 0;
+  }
+  @keyframes cmntPulse { from { opacity: 1; } to { opacity: .35; } }
+  @media (max-width: 560px) {
+    .cmnt-fab { right: 16px; bottom: 16px; }
+    .cmnt-onboard { right: 16px; bottom: 72px; width: calc(100vw - 32px); }
+    .cmnt-drawer { width: 100vw; }
+  }
 
 </style>
 </head>
@@ -311,11 +730,10 @@
   </div>
 
   <section class="priority-summary" id="priority-summary">
-    <h2>What to prioritize next</h2>
-    <p>ARI Fast is broadly competitive with Google, so the next wins are about making fast routes feel more direct, easier to follow, and better to walk when similarly fast alternatives exist.</p>
+    <h2>Where there is room to improve</h2>
+    <p>ARI Fast is broadly competitive with Google. If we want to improve further, the clearest opportunities are making fast routes more direct, easier to follow, and better to walk when similarly fast alternatives exist.</p>
     <div class="priority-list">
-      <div class="priority-item"><strong>Fix missed shortcuts</strong>Catch obvious cut-throughs, pedestrian paths, parks, bridges, and local shortcuts.</div>
-      <div class="priority-item"><strong>Simplify the route</strong>Avoid unnecessary detours and too many turns when speed is similar.</div>
+      <div class="priority-item"><strong>Choose obvious direct paths</strong>Use clear shortcuts that save time or improve the walk, but avoid many-turn routes, detours without a clear benefit, or paths that are easy to miss.</div>
       <div class="priority-item"><strong>Avoid busy streets</strong>Use calmer fast alternatives when available.</div>
       <div class="priority-item featured"><strong>Prefer nicer fast paths</strong>Favor river, lake, park, or pedestrian routes when time is comparable.</div>
     </div>
@@ -347,7 +765,11 @@
 
       <section id="reasons-section">
         <div class="sec-head"><h2>Why the losing route lost</h2></div>
-        <p class="sec-note">Shown across all losing routes because the sample is small. When we looked only at cases where ARI did worse (Google won or both routes worked poorly), the same pattern still appeared.</p>
+        <p class="sec-note">Default view pools all losing routes to keep the sample large enough to read. The ARI vs Google comparison is only directional because each side has few cases.</p>
+        <div class="reason-filter" role="group" aria-label="Filter losing-route reasons">
+          <button class="chip reason-mode on" type="button" data-reason-mode="all">All</button>
+          <button class="chip reason-mode" type="button" data-reason-mode="compare">Compare ARI vs Google</button>
+        </div>
         <div class="card">
           <div class="chart-box" id="reasons-box"><canvas id="reasonsChart" role="img" aria-label="Failure reasons across all losing routes"></canvas></div>
         </div>
@@ -355,7 +777,7 @@
 
       <hr class="path-divider">
 
-      <section>
+      <section id="comment-theme-section">
         <div class="sec-head"><h2>What free text adds</h2></div>
         <p class="sec-note">Qualitative signals that are not already captured by the structured reason taxonomy above.</p>
         <div class="card" id="comment-themes"></div>
@@ -363,18 +785,20 @@
 
       <hr class="path-divider">
 
-      <section>
+      <section id="data-update-section">
         <div class="sec-head"><h2>Update the data</h2></div>
         <details class="updater">
           <summary>Paste a new export to refresh every chart</summary>
           <div class="updater-body">
-            <p>Paste the raw export below in the same format as the rating tool (rows containing rater, verdict, overlap %, reason lines, optional comment, ending with "Delete"). Tabs or line breaks between fields both work. To make new data permanent, open this file in a text editor and replace the text between <span>RAW_DATA = `</span> and the closing backtick with your new export.</p>
+            <p>When hosted, the dashboard can load <span>data/feedback.jsonl</span> automatically. The paste box is still useful for quick local checks or one-off exports.</p>
             <textarea id="paste-area" placeholder="Kristin	ARI	81%&#10;Crossing friction&#10;Delete&#10;..." aria-label="Paste raw export"></textarea>
             <div class="btn-row">
+              <button class="btn" id="btn-live">Load latest data file</button>
               <button class="btn" id="btn-load">Load pasted data</button>
               <button class="btn ghost" id="btn-reset">Restore embedded data</button>
               <span id="parse-status"></span>
             </div>
+            <span class="source-status" id="source-status"></span>
           </div>
         </details>
       </section>
@@ -383,11 +807,76 @@
 
 </div>
 
+<div class="cmnt-onboard" id="cmntOnboard">
+  <h3>How to leave comments</h3>
+  <p>Select text to comment on a specific finding, or use Add comment for a general note. Comments are shared when the report is online.</p>
+  <button type="button" id="cmntOnboardDismiss">Got it</button>
+</div>
+
+<div class="sel-popover" id="selPopover" role="tooltip">
+  <div class="sel-quote" id="selQuote"></div>
+  <div class="sel-byline">Posting as <span class="sel-author" id="selAuthor" title="Click to change">Anonymous</span></div>
+  <div class="sel-row">
+    <input id="selInput" placeholder="Comment on selection..." maxlength="500" autocomplete="off">
+    <button type="button" id="selSend" disabled>Post</button>
+  </div>
+</div>
+
+<div class="cmnt-overlay" id="cmntOverlay"></div>
+<button class="cmnt-fab" id="cmntFab" type="button" title="Open comments">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span id="cmntFabLabel">Add comment</span>
+  <span class="cmnt-badge" id="cmntBadge"></span>
+</button>
+
+<aside class="cmnt-drawer" id="cmntDrawer" aria-label="Comments">
+  <div class="cmnt-head">
+    <button class="cmnt-author-chip" id="cmntAuthorChip" type="button" title="Click to change name">
+      <span class="cmnt-avatar" id="cmntAvatar">?</span>
+      <span class="cmnt-author-name" id="cmntAuthorName">Anonymous</span>
+    </button>
+    <div class="cmnt-author-edit" id="cmntAuthorEdit">
+      <label for="cmntAuthorInput">Posting as</label>
+      <input id="cmntAuthorInput" type="text" placeholder="Your name" maxlength="40" autocomplete="name">
+      <button type="button" id="cmntAuthorSave">Save</button>
+    </div>
+    <span class="cmnt-sync" id="cmntSync">
+      <span class="cmnt-sync-dot" id="cmntSyncDot"></span>
+      <span id="cmntSyncText">live</span>
+    </span>
+    <button class="cmnt-close" id="cmntClose" type="button" title="Close">×</button>
+  </div>
+  <div class="cmnt-tabs" id="cmntTabs"></div>
+  <div class="cmnt-list" id="cmntList"></div>
+  <div class="cmnt-compose">
+    <textarea id="cmntText" placeholder="Add a comment..." rows="3"></textarea>
+    <div class="cmnt-compose-footer">
+      <span class="cmnt-scope" id="cmntScope"></span>
+      <button class="cmnt-submit" id="cmntSubmit" type="button" disabled>Post</button>
+    </div>
+  </div>
+</aside>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const VERDICTS = ["LiveMap", "Google", "Both work well", "Both work poorly"];
 const VERDICT_ALIASES = { "ARI": "LiveMap" };
+const RATER_ALIASES = { "Christian Reinhold": "Christian", "Philipe Fatio": "Philipe", "martijn": "Martijn" };
+const EXCLUDED_RATERS = new Set([]);
 const REASONS = ["Misses shortcut", "Unclear shortcut", "Longer distance", "Longer time", "More turns", "Crossing friction", "More elevation", "More stairs", "Other"];
+const EXTERNAL_DATA_URL = "data/feedback.jsonl";
+const LIVE_SOURCE_URL = "https://tbt-routing.paas.livemap.sh/api/v1/field/feedback";
+const LIVE_REASON_LABELS = {
+  longer_time: "Longer time",
+  longer_distance: "Longer distance",
+  more_elevation: "More elevation",
+  more_stairs: "More stairs",
+  misses_shortcut: "Misses shortcut",
+  more_turns: "More turns",
+  unclear_shortcut: "Unclear shortcut",
+  crossing_friction: "Crossing friction",
+  other: "Other"
+};
 const COMMENT_THEMES = [
   { name: "Too busy", description: "The route loses appeal when it passes through traffic, crowded corridors, tourist-heavy streets, or busy roads instead of calmer alternatives.", terms: ["busy street", "busy streets", "busy road", "busy roads", "too busy", "busier", "less busy", "calmer", "alongside busy", "less alongside busy", "traffic", "big road", "big roads", "main road", "main roads", "big street", "big streets", "main street", "main streets", "cars", "tram", "hardbrücke", "sihlquai", "crowded", "crowding", "tourists", "christmas market", "off season"], excludeTerms: ["lot of turns", "afraid to miss", "right street"] },
   { name: "Less pleasant", description: "The route loses when the alternative offers a nicer walk, such as river or lake paths, parks, more beautiful streets, or better surroundings.", terms: ["nice", "nicer", "scenic"], contextualTerms: ["river", "lake", "park", "parks"], context: ["nice", "nicer", "prefer", "preferred", "would take", "definitely"] },
@@ -444,7 +933,113 @@ function verdictLabel(v) {
   return v === "LiveMap" ? "ARI" : v;
 }
 
-const RAW_DATA = `Kristin	LiveMap	81%
+function parseJsonl(text) {
+  const out = [];
+  const errors = [];
+  text.split(/\r?\n/).forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    try {
+      out.push(JSON.parse(trimmed));
+    } catch (error) {
+      errors.push(`line ${index + 1}`);
+    }
+  });
+  return { rows: out, errors };
+}
+
+function providerToVerdict(provider) {
+  if (provider === "livemap_fast") return "LiveMap";
+  if (provider === "google") return "Google";
+  return null;
+}
+
+function liveChoiceToVerdict(fb) {
+  if (fb.choice === "both_work_well") return "Both work well";
+  if (fb.choice === "both_work_poorly") return "Both work poorly";
+  if (fb.choice === "not_sure") return null;
+  const selectedLabel = fb.choice === "route_a" ? "A" : fb.choice === "route_b" ? "B" : null;
+  if (!selectedLabel) return null;
+  const provider = fb.labelMap?.[selectedLabel] || fb.labels?.[selectedLabel]?.provider;
+  return providerToVerdict(provider);
+}
+
+function feedbackToRecord(fb) {
+  if (fb.deleted || !fb.choice || !(fb.type === "bench-ux" || fb.labelMap)) return null;
+  const verdict = liveChoiceToVerdict(fb);
+  const rater = fb.rater || fb.walker || "anonymous";
+  if (!verdict || !rater || typeof fb.overlapPercent !== "number") return null;
+  const reasons = (fb.reasons || [])
+    .map(reason => LIVE_REASON_LABELS[reason] || reason)
+    .filter(reason => REASONS.includes(reason));
+  return {
+    rater,
+    verdict,
+    overlap: fb.overlapPercent,
+    reasons,
+    comment: (fb.note || "").trim(),
+    receivedAt: fb.received_at || fb.clientTs || ""
+  };
+}
+
+function parseFeedbackJsonl(text) {
+  const parsed = parseJsonl(text);
+  const records = parsed.rows.map(feedbackToRecord).filter(Boolean);
+  return { records, errors: parsed.errors };
+}
+
+const RAW_DATA = `Rater	Verdict	Overlap	Reasons	Actions
+Irene	LiveMap	100%
+More turns
+Delete
+Irene	LiveMap	77%
+More turns
+Delete
+Irene	Google	100%
+Other
+less time along the river
+Delete
+Irene	LiveMap	40%
+More turns
+Delete
+Irene	LiveMap	40%
+More turns
+Delete
+Irene	LiveMap	17%
+More turns
+Delete
+Irene	LiveMap	96%
+More turns
+Delete
+Irene	Both work poorly	70%
+Other
+I would start with Route A taking the route along the river. Then I would continue with Route B (more direct and more time through the Universitat park)
+Delete
+Irene	Google	100%
+Other
+Unclear detour
+Delete
+Irene	LiveMap	51%
+Longer distance
+Delete
+Irene	LiveMap	98%
+Other
+ths start point is wrong again
+Delete
+Irene	LiveMap	56%
+Unclear shortcut
+its starts at a wrong point
+Delete
+Irene	Google	52%
+Longer distance
+Other
+its busier and avoid crossing a nice park
+Delete
+Irene	Both work poorly	37%
+More turns
+I would take Bullingerstrasse (Route A) which is nicer (near a park) and less busy than Hohlstrasse. Then I would take Hardstrasse and continuing taking the bridge as Route B does (is much nicer and calmer than going under the bridge which could be even dangerous)
+Delete
+Kristin	LiveMap	81%
 Crossing friction
 Delete
 Olivier	Both work well	90%
@@ -525,36 +1120,36 @@ Irene	Google	33%
 Other
 Too busy
 Delete
-Christian	LiveMap	25%
+Christian Reinhold	LiveMap	25%
 Other
 Don't know the area and looking by the shake it somehow feels that B is longer and might have less shadow areas than the inbetween streets in route A
 Delete
-Christian	Both work well	89%
+Christian Reinhold	Both work well	89%
 Delete
-Christian	Both work well	63%
+Christian Reinhold	Both work well	63%
 I need coffee in the mornings so even in fast routes I would choose paths with a coffe shop and stop for 5 minutes or to by something quick in a kiosk, or the meal for the evening on a supermarket (e.g. B. route)
 Delete
-Christian	Both work well	95%
+Christian Reinhold	Both work well	95%
 on A you see the starbucks, some people might stop for a coffee, but both work well
 Delete
-Christian	LiveMap	62%
+Christian Reinhold	LiveMap	62%
 More stairs
 not a fan of stairs
 Delete
-Christian	Google	75%
+Christian Reinhold	Google	75%
 Other
 Fast route is similar but offers most scenic views
 Delete
-Christian	Both work well	100%
+Christian Reinhold	Both work well	100%
 Delete
-Christian	LiveMap	48%
+Christian Reinhold	LiveMap	48%
 More turns
 on a first time in the area I route A looks more complicated
 Delete
-Christian	Both work well	29%
+Christian Reinhold	Both work well	29%
 B is more lively, A has some beer places but for fast both work best
 Delete
-Christian	Both work well	54%
+Christian Reinhold	Both work well	54%
 A woks best at day (inside a park) and B at night (street with lights)
 Delete
 Irene	Both work well	100%
@@ -617,78 +1212,78 @@ Delete
 Olivier	Both work well	77%
 Crossing friction
 Delete
-Philipe	Both work poorly	98%
+Philipe Fatio	Both work poorly	98%
 Longer distance
 Both missed the opportunity to go along the lake. Route B does that a bit more around the middle of the route.
 Delete
-Philipe	LiveMap	15%
+Philipe Fatio	LiveMap	15%
 Longer time
 Longer distance
 Misses shortcut
 Route A takes the pedestrian bridge across the river.
 Delete
-Philipe	Google	21%
+Philipe Fatio	Google	21%
 Misses shortcut
 Route A takes the pedestrian bridge across the train tracks.
 Delete
-Philipe	Both work well	15%
+Philipe Fatio	Both work well	15%
 Delete
-Philipe	Both work poorly	40%
+Philipe Fatio	Both work poorly	40%
 Misses shortcut
 Both miss the shortcut across the Schindlergut park.
 Delete
-Philipe	LiveMap	19%
+Philipe Fatio	LiveMap	19%
 Longer time
 Longer distance
 Route A also crosses the main train station underground.
 Delete
-Philipe	LiveMap	85%
+Philipe Fatio	LiveMap	85%
 Misses shortcut
 Delete
-Philipe	Both work poorly	100%
+Philipe Fatio	Both work poorly	100%
 Misses shortcut
 Both miss to go via the parks Merkurpark and Artergut.
 Delete
-Philipe	Both work well	48%
+Philipe Fatio	Both work well	48%
 Delete
-Philipe	LiveMap	24%
+Philipe Fatio	LiveMap	24%
 Longer time
 Longer distance
 Route B is what I walk from home to the office.
 Delete
-Philipe	Both work well	71%
+Philipe Fatio	Both work well	71%
 Delete
-Philipe	LiveMap	83%
+Philipe Fatio	LiveMap	83%
 Misses shortcut
 Delete
-Philipe	Both work well	93%
+Philipe Fatio	Both work well	93%
 Delete
-Philipe	Both work well	46%
+Philipe Fatio	Both work well	46%
 Delete
-Philipe	Both work well	74%
+Philipe Fatio	Both work well	74%
 Delete
-Philipe	Both work poorly	57%
+Philipe Fatio	Both work poorly	57%
 Other
 Both miss the pedestrian path along the river (Kloster-Fahr-Weg, alternatively the slightly shorter Fischerweg on the other side of the river), which I would definitely prefer.
 Delete
-Philipe	Both work well	71%
+Philipe Fatio	Both work well	71%
 Delete
-Philipe	Both work well	50%
+Philipe Fatio	Both work well	50%
 Delete
-Philipe	Google	95%
+Philipe Fatio	Google	95%
 Longer distance
 Misses shortcut
 Route A takes some little streets close to Schaffhauserplatz while Route A takes a detour all the way via Schaffhauserplatz. Otherwise identical.
 Delete
-Philipe	LiveMap	81%
+Philipe Fatio	LiveMap	81%
 Crossing friction
 Route B takes the simpler path across the big roundabout at Letzigraben.
 Delete
-Philipe	LiveMap	92%
+Philipe Fatio	LiveMap	92%
 Misses shortcut
 Route A takes a shortcut across Helvetiaplatz, which makes total sense. Other than that they're virtually identical.
 Delete
-Philipe	Both work well	61%
+Philipe Fatio	Both work well	61%
 Route A is calmer, but crosses a small hill. Route B is along busy roads. I might take both, depending on my mood.
 Delete
 Simon	Google	73%
@@ -717,6 +1312,15 @@ Simon	Both work well	100%
 Delete
 Simon	LiveMap	94%
 Unclear shortcut
+Delete
+martijn	LiveMap	88%
+Misses shortcut
+Delete
+martijn	LiveMap	71%
+More turns
+busier streets
+Delete
+martijn	Both work well	100%
 Delete`;
 
 function parseData(raw) {
@@ -763,11 +1367,15 @@ function parseData(raw) {
 let DATA = [];
 let activeRater = "All";
 let activeCommentTheme = null;
+let activeReasonMode = "all";
 
 const COVERED_NAME = "Already covered by the reasons chart";
 const FIXED_THEME_ASSIGNMENTS = {
   "more walking next to big roads": "Too busy",
   "less shadow areas": "Weather or time of day",
+  "less time along the river": "Less pleasant",
+  "more time through the universitat park": "Less pleasant",
+  "shortcut across the schindlergut park": "Less pleasant",
   "missed the opportunity to go along the lake": "Less pleasant",
   "miss to go via the parks": "Less pleasant"
 };
@@ -793,7 +1401,9 @@ function countBy(rows, key) {
 }
 
 function renderChips() {
-  const raters = [...new Set(DATA.map(r => r.rater))].sort((a, b) => a.localeCompare(b));
+  const totals = countBy(DATA, "rater");
+  const raters = [...new Set(DATA.map(r => r.rater))]
+    .sort((a, b) => (totals[b] || 0) - (totals[a] || 0) || a.localeCompare(b));
   const box = document.getElementById("rater-chips");
   box.innerHTML = "";
   ["All", ...raters].forEach(name => {
@@ -916,13 +1526,14 @@ function stackedBarPercentLabels(pluginId) {
   };
 }
 
-function pctReasonChart(id, boxId, counts, denom, color, big) {
+function pctReasonChart(id, boxId, counts, denom, color, big, useHighlights = true, sharedLabels = new Set()) {
   const labels = REASONS.filter(x => counts[x]).sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+  const displayLabels = labels.map(label => sharedLabels.has(label) ? `● ${label}` : label);
   const rowH = big ? 48 : 40;
   document.getElementById(boxId).style.height = Math.max(big ? 240 : 180, labels.length * rowH + 36) + "px";
   const pct = labels.map(x => denom ? Math.round((counts[x] || 0) / denom * 100) : 0);
   const raw = labels.map(x => counts[x] || 0);
-  const backgrounds = labels.map(label => label === "Other" ? "#F1F1EA" : (REASON_HIGHLIGHTS[label] || color));
+  const backgrounds = labels.map(label => label === "Other" ? "#F1F1EA" : (useHighlights ? (REASON_HIGHLIGHTS[label] || color) : color));
   const otherOutline = {
     id: "otherOutline",
     afterDatasetsDraw(chart) {
@@ -991,7 +1602,7 @@ function pctReasonChart(id, boxId, counts, denom, color, big) {
   makeChart(id, {
     type: "bar",
     data: {
-      labels,
+      labels: displayLabels,
       datasets: [{
         data: pct,
         backgroundColor: backgrounds,
@@ -1009,20 +1620,79 @@ function pctReasonChart(id, boxId, counts, denom, color, big) {
       },
       scales: {
         x: { min: 0, max: 100, display: false, border: { display: false } },
-        y: { ticks: { color: "#1C221F", font: ctx => ({ family: "'IBM Plex Sans', sans-serif", size: big ? 15 : 14, weight: REASON_HIGHLIGHTS[labels[ctx.index]] ? "700" : "400" }) }, grid: { display: false }, border: { display: false } }
+        y: { ticks: { color: "#1C221F", font: ctx => ({ family: "'IBM Plex Sans', sans-serif", size: big ? 15 : 14, weight: sharedLabels.has(labels[ctx.index]) || REASON_HIGHLIGHTS[labels[ctx.index]] ? "700" : "400" }) }, grid: { display: false }, border: { display: false } }
       }
     },
     plugins: [trackPlugin, otherOutline, barEndLabels]
   });
 }
 
+function compareReasonCharts(boxId, ariCounts, googleCounts, ariDenom, googleDenom) {
+  ["reasonsChart", "ariReasonsChart", "googleReasonsChart"].forEach(id => {
+    if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  });
+  const topReasons = counts => REASONS
+    .filter(x => counts[x])
+    .sort((a, b) => (counts[b] || 0) - (counts[a] || 0) || a.localeCompare(b))
+    .slice(0, 3);
+  const ariTop = new Set(topReasons(ariCounts));
+  const googleTop = new Set(topReasons(googleCounts));
+  const sharedTop = new Set([...ariTop].filter(x => googleTop.has(x)));
+  const rankingHtml = (counts, denom, colorClass) => {
+    const labels = REASONS.filter(x => counts[x])
+      .sort((a, b) => (counts[b] || 0) - (counts[a] || 0) || a.localeCompare(b));
+    if (!labels.length) return '<p class="sec-note">No losing-route reasons for this selection.</p>';
+    return `<div class="reason-rank">
+      ${labels.map(label => {
+        const raw = counts[label] || 0;
+        const pct = denom ? Math.round(raw / denom * 100) : 0;
+        const isShared = sharedTop.has(label);
+        const fillClass = label === "Other" ? "other" : colorClass;
+        return `
+          <div class="reason-rank-row">
+            <div class="reason-rank-label${isShared ? " shared" : ""}">${esc(label)}</div>
+            <div class="reason-rank-track" aria-hidden="true"><div class="reason-rank-fill ${fillClass}${isShared ? "" : " muted"}" style="width:${pct}%"></div></div>
+            <div class="reason-rank-value"><span class="reason-rank-base">${raw}/${denom}</span> · ${pct}%</div>
+          </div>`;
+      }).join("")}
+    </div>`;
+  };
+  document.getElementById(boxId).removeAttribute("style");
+  document.getElementById(boxId).innerHTML = `
+    <div class="reason-compare-grid">
+      <div class="reason-compare-panel">
+        <h3>ARI lost</h3>
+        ${rankingHtml(ariCounts, ariDenom, "ari")}
+      </div>
+      <div class="reason-compare-panel">
+        <h3>Google lost</h3>
+        ${rankingHtml(googleCounts, googleDenom, "google")}
+      </div>
+    </div>`;
+}
+
 function renderReasons(rows) {
   const { vsGoogle, vsLiveMap, bothPoor } = reasonCounts(rows);
   const total = {};
+  document.querySelectorAll(".reason-mode").forEach(button => {
+    button.classList.toggle("on", button.dataset.reasonMode === activeReasonMode);
+  });
+  if (activeReasonMode === "compare") {
+    const ariLostDenom = rows.filter(r => r.verdict === "Google").length;
+    const googleLostDenom = rows.filter(r => r.verdict === "LiveMap").length;
+    compareReasonCharts("reasons-box", vsLiveMap, vsGoogle, ariLostDenom, googleLostDenom);
+    return;
+  }
+  ["ariReasonsChart", "googleReasonsChart"].forEach(id => {
+    if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  });
+  const box = document.getElementById("reasons-box");
+  if (!document.getElementById("reasonsChart")) {
+    box.innerHTML = '<canvas id="reasonsChart" role="img" aria-label="Failure reasons across all losing routes"></canvas>';
+  }
   REASONS.forEach(x => { total[x] = (vsGoogle[x] || 0) + (vsLiveMap[x] || 0) + (bothPoor[x] || 0); });
-  const nAnyLost = rows.filter(r => r.verdict !== "Both work well").length;
-
-  pctReasonChart("reasonsChart", "reasons-box", total, nAnyLost, NEUTRAL, true);
+  const denom = rows.filter(r => r.verdict !== "Both work well").length;
+  pctReasonChart("reasonsChart", "reasons-box", total, denom, NEUTRAL, true, true);
 }
 
 function renderRaterChart(rows) {
@@ -1104,8 +1774,8 @@ function commentHtml(r) {
     <div class="comment">
       <div class="who">
         <span>${esc(r.rater)}</span>
+        <span>Verdict</span>
         <span class="tag" style="background:${SOFT[r.verdict]}; color:${TEXT_ON_SOFT[r.verdict]};">${verdictLabel(r.verdict)}</span>
-        <span>${r.overlap}% overlap</span>
       </div>
       <p>${esc(r.comment)}</p>
       ${r.reasons.length ? `<div class="reasons">${r.reasons.map(esc).join(" · ")}</div>` : ""}
@@ -1184,20 +1854,63 @@ function renderAll(rebuildChips = true) {
   renderRaterChart(rows);
 }
 
-function loadRaw(raw, sourceLabel) {
-  const { records, errors } = parseData(raw);
+function loadRecords(records, errors, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status");
+  const sourceStatus = document.getElementById("source-status");
   if (!records.length) {
-    status.textContent = "No valid rows found. Check that each row ends with \"Delete\".";
-    status.className = "err";
+    if (!options.silent) {
+      status.textContent = "No valid rows found.";
+      status.className = "err";
+    }
     return;
   }
-  DATA = records.map((r, i) => ({ ...r, id: i }));
+  DATA = records
+    .map(r => ({ ...r, rater: RATER_ALIASES[r.rater] || r.rater }))
+    .filter(r => !EXCLUDED_RATERS.has(r.rater))
+    .map((r, i) => ({ ...r, id: i }));
   activeRater = "All";
   activeCommentTheme = null;
+  activeReasonMode = "all";
   renderAll();
-  status.className = "";
-  status.textContent = `Loaded ${records.length} rows from ${sourceLabel}` + (errors.length ? ` · ${errors.length} row(s) skipped (missing rater, verdict, or overlap)` : "");
+  if (options.silent) {
+    status.textContent = "";
+    status.className = "";
+  } else {
+    status.className = "";
+  }
+  const excluded = records.length - DATA.length;
+  const last = DATA.map(r => r.receivedAt).filter(Boolean).sort().pop();
+  const lastText = last ? ` · latest ${new Date(last).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}` : "";
+  const message = `Loaded ${DATA.length} rows from ${sourceLabel}` + (excluded ? ` · ${excluded} excluded` : "") + (errors.length ? ` · ${errors.length} row(s) skipped` : "") + lastText;
+  if (!options.silent) status.textContent = message;
+  if (sourceStatus) sourceStatus.textContent = message;
+}
+
+function loadRaw(raw, sourceLabel, options = {}) {
+  const { records, errors } = parseData(raw);
+  loadRecords(records, errors, sourceLabel, options);
+}
+
+function loadFeedbackJsonl(raw, sourceLabel, options = {}) {
+  const { records, errors } = parseFeedbackJsonl(raw);
+  loadRecords(records, errors, sourceLabel, options);
+}
+
+async function loadExternalData(options = {}) {
+  const status = document.getElementById("parse-status");
+  try {
+    const res = await fetch(EXTERNAL_DATA_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = await res.text();
+    loadFeedbackJsonl(raw, "latest data file", options);
+    return true;
+  } catch (error) {
+    if (!options.silent) {
+      status.textContent = `Could not load ${EXTERNAL_DATA_URL}. Using embedded data.`;
+      status.className = "err";
+    }
+    return false;
+  }
 }
 
 document.getElementById("btn-load").onclick = () => {
@@ -1209,10 +1922,20 @@ document.getElementById("btn-load").onclick = () => {
   }
   loadRaw(raw, "pasted text");
 };
+document.getElementById("btn-live").onclick = () => {
+  loadExternalData({ silent: false });
+};
 document.getElementById("btn-reset").onclick = () => {
   document.getElementById("paste-area").value = "";
   loadRaw(RAW_DATA, "embedded data");
 };
+
+document.querySelectorAll(".reason-mode").forEach(button => {
+  button.onclick = () => {
+    activeReasonMode = button.dataset.reasonMode;
+    renderReasons(subset());
+  };
+});
 
 document.getElementById("detail-report").addEventListener("toggle", event => {
   if (event.target.open) {
@@ -1221,8 +1944,518 @@ document.getElementById("detail-report").addEventListener("toggle", event => {
   }
 });
 
-loadRaw(RAW_DATA, "embedded data");
+loadRaw(RAW_DATA, "embedded data", { silent: true });
+loadExternalData({ silent: true });
 document.getElementById("parse-status").textContent = "";
+
+// ── Shared comment layer ─────────────────────────────────────
+(function() {
+  const REMOTE = {
+    accessKey: "$2a$10$y/0zTaWqnWeIW6mStyHQ7OwuDXgazebZbvapZ.I.fYfALmWlLMCfe",
+    binId: "6a1ecd98f5f4af5e29acef54",
+    recordKey: "ariFastRouteDashboardComments"
+  };
+  const REMOTE_URL = `https://api.jsonbin.io/v3/b/${REMOTE.binId}`;
+  const LS_KEY = "ari_fast_route_dashboard_comments_v1";
+  const AUTHOR_KEY = "ari_fast_route_dashboard_comment_author";
+  const ONBOARD_KEY = "ari_fast_route_dashboard_comment_onboard_seen";
+  const SECTIONS = [
+    { id: "atGlance", label: "At a glance", selectors: ["header", ".overview", "#priority-summary"] },
+    { id: "detail", label: "Detailed report", selectors: ["#detail-report"] },
+    { id: "raters", label: "Verdicts by rater", selectors: ["#rater-chart-section"] },
+    { id: "reasons", label: "Losing route reasons", selectors: ["#reasons-section"] },
+    { id: "themes", label: "Free-text themes", selectors: ["#comment-theme-section"] },
+    { id: "data", label: "Update data", selectors: ["#data-update-section"] }
+  ];
+
+  let comments = [];
+  let activeSection = null;
+  let drawerOpen = false;
+  let remoteAvailable = null;
+  let syncing = false;
+  let pendingSelection = null;
+  let activeHighlight = null;
+  let jumpHighlight = null;
+
+  const fab = document.getElementById("cmntFab");
+  const fabLabel = document.getElementById("cmntFabLabel");
+  const badge = document.getElementById("cmntBadge");
+  const drawer = document.getElementById("cmntDrawer");
+  const overlay = document.getElementById("cmntOverlay");
+  const closeBtn = document.getElementById("cmntClose");
+  const tabs = document.getElementById("cmntTabs");
+  const list = document.getElementById("cmntList");
+  const text = document.getElementById("cmntText");
+  const submit = document.getElementById("cmntSubmit");
+  const scope = document.getElementById("cmntScope");
+  const syncDot = document.getElementById("cmntSyncDot");
+  const syncText = document.getElementById("cmntSyncText");
+  const authorChip = document.getElementById("cmntAuthorChip");
+  const authorName = document.getElementById("cmntAuthorName");
+  const authorAvatar = document.getElementById("cmntAvatar");
+  const authorEdit = document.getElementById("cmntAuthorEdit");
+  const authorInput = document.getElementById("cmntAuthorInput");
+  const authorSave = document.getElementById("cmntAuthorSave");
+  const onboard = document.getElementById("cmntOnboard");
+  const onboardDismiss = document.getElementById("cmntOnboardDismiss");
+  const selPopover = document.getElementById("selPopover");
+  const selQuote = document.getElementById("selQuote");
+  const selAuthor = document.getElementById("selAuthor");
+  const selInput = document.getElementById("selInput");
+  const selSend = document.getElementById("selSend");
+
+  function sectionLabel(id) {
+    return (SECTIONS.find(s => s.id === id) || SECTIONS[0]).label;
+  }
+
+  function sectionForElement(el) {
+    if (!el) return "atGlance";
+    if (el.closest("#cmntDrawer, #selPopover, .cmnt-onboard")) return activeSection || "atGlance";
+    if (el.closest("#rater-chart-section")) return "raters";
+    if (el.closest("#reasons-section")) return "reasons";
+    if (el.closest("#comment-theme-section")) return "themes";
+    if (el.closest("#data-update-section")) return "data";
+    if (el.closest("#detail-report")) return "detail";
+    if (el.closest("header, .overview, #priority-summary")) return "atGlance";
+    return sectionFromViewport();
+  }
+
+  function sectionFromViewport() {
+    let best = "atGlance";
+    let bestTop = -Infinity;
+    SECTIONS.forEach(section => {
+      section.selectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+          const top = el.getBoundingClientRect().top;
+          if (top <= 180 && top > bestTop) {
+            best = section.id;
+            bestTop = top;
+          }
+        });
+      });
+    });
+    return best;
+  }
+
+  function safe(s) {
+    return String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) {
+      return [];
+    }
+  }
+
+  function saveLocal() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(comments)); } catch(e) {}
+  }
+
+  function mergeComments(a, b) {
+    const byId = new Map();
+    [...a, ...b].forEach(comment => {
+      if (comment && comment.id) byId.set(comment.id, comment);
+    });
+    return [...byId.values()].sort((x, y) => (x.ts || 0) - (y.ts || 0));
+  }
+
+  async function loadRemoteRecord() {
+    const res = await fetch(`${REMOTE_URL}/latest`, {
+      headers: { "X-Access-Key": REMOTE.accessKey }
+    });
+    if (!res.ok) throw new Error("Could not load comments");
+    const data = await res.json();
+    return data.record || {};
+  }
+
+  async function loadComments() {
+    const local = loadLocal();
+    if (local.length) {
+      comments = mergeComments(comments, local);
+      renderAll();
+    }
+    try {
+      const record = await loadRemoteRecord();
+      comments = mergeComments(comments, record[REMOTE.recordKey] || []);
+      remoteAvailable = true;
+      saveLocal();
+    } catch(e) {
+      remoteAvailable = false;
+    }
+    setSyncing(false);
+    renderAll();
+  }
+
+  async function saveComments() {
+    saveLocal();
+    renderAll();
+    if (syncing || remoteAvailable === false) return;
+    syncing = true;
+    setSyncing(true);
+    try {
+      const latest = await loadRemoteRecord();
+      const merged = mergeComments(latest[REMOTE.recordKey] || [], comments);
+      comments = merged;
+      await fetch(REMOTE_URL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Access-Key": REMOTE.accessKey
+        },
+        body: JSON.stringify({ ...latest, [REMOTE.recordKey]: merged })
+      });
+      remoteAvailable = true;
+      saveLocal();
+    } catch(e) {
+      remoteAvailable = false;
+    } finally {
+      syncing = false;
+      setSyncing(false);
+      renderAll();
+    }
+  }
+
+  function setSyncing(on) {
+    syncDot.classList.toggle("syncing", on);
+    syncText.textContent = on ? "saving" : (remoteAvailable === false ? "local" : "live");
+  }
+
+  function getAuthor() {
+    try { return localStorage.getItem(AUTHOR_KEY) || ""; } catch(e) { return ""; }
+  }
+
+  function setAuthor(name) {
+    try { localStorage.setItem(AUTHOR_KEY, name); } catch(e) {}
+    updateAuthor();
+  }
+
+  function initials(name) {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+    return (parts[0].slice(0, 1) + parts[parts.length - 1].slice(0, 1)).toUpperCase();
+  }
+
+  function updateAuthor() {
+    const name = getAuthor();
+    authorName.textContent = name || "Anonymous";
+    authorAvatar.textContent = initials(name);
+    selAuthor.textContent = name || "Anonymous";
+  }
+
+  function formatTime(ts) {
+    const d = new Date(ts || Date.now());
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " +
+      d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function filteredComments() {
+    return activeSection === null ? [...comments] : comments.filter(c => c.section === activeSection);
+  }
+
+  function renderTabs() {
+    const allCount = comments.length;
+    tabs.innerHTML = `
+      <button class="cmnt-tab${activeSection === null ? " active" : ""}" type="button" data-cmnt-tab="all">All${allCount ? '<span class="cmnt-tab-dot"></span>' : ""}</button>
+      ${SECTIONS.map(section => {
+        const count = comments.filter(c => c.section === section.id).length;
+        return `<button class="cmnt-tab${activeSection === section.id ? " active" : ""}" type="button" data-cmnt-tab="${section.id}">${safe(section.label)}${count ? '<span class="cmnt-tab-dot"></span>' : ""}</button>`;
+      }).join("")}`;
+    tabs.querySelectorAll("[data-cmnt-tab]").forEach(button => {
+      button.addEventListener("click", () => {
+        activeSection = button.dataset.cmntTab === "all" ? null : button.dataset.cmntTab;
+        renderAll();
+      });
+    });
+  }
+
+  function renderList() {
+    const rows = filteredComments().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    if (!rows.length) {
+      list.innerHTML = `<div class="cmnt-empty"><strong>No comments yet.</strong><br><br>Select text in the report to comment on a specific finding, or write a general note below.</div>`;
+      return;
+    }
+    list.innerHTML = rows.map(c => `
+      <article class="cmnt-item" data-id="${safe(c.id)}">
+        <div class="cmnt-item-head">
+          <span class="cmnt-item-author">${safe(c.author || "Anonymous")}</span>
+          <span class="cmnt-item-meta">
+            <span>${formatTime(c.ts)}</span>
+            <button class="cmnt-delete" type="button" title="Delete" data-delete="${safe(c.id)}">×</button>
+          </span>
+        </div>
+        ${c.quote ? `<div class="cmnt-quote" data-quote="${safe(c.quote)}">${safe(c.quote)}</div>` : ""}
+        <div class="cmnt-text">${safe(c.text)}</div>
+        ${activeSection === null ? `<span class="cmnt-section">${safe(sectionLabel(c.section))}</span>` : ""}
+      </article>
+    `).join("");
+    list.querySelectorAll("[data-delete]").forEach(button => {
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        comments = comments.filter(c => c.id !== button.dataset.delete);
+        saveComments();
+      });
+    });
+    list.querySelectorAll("[data-quote]").forEach(node => {
+      node.addEventListener("click", () => jumpToQuote(node.dataset.quote));
+    });
+  }
+
+  function renderChrome() {
+    const count = comments.length;
+    badge.textContent = count ? String(count) : "";
+    fabLabel.textContent = count ? `Comments (${count})` : "Add comment";
+    scope.textContent = "on: " + sectionLabel(activeSection || sectionFromViewport());
+    submit.disabled = !text.value.trim();
+  }
+
+  function renderAll() {
+    renderTabs();
+    renderList();
+    renderChrome();
+  }
+
+  function openDrawer(section) {
+    drawerOpen = true;
+    activeSection = section || activeSection || sectionFromViewport();
+    drawer.classList.add("open");
+    overlay.classList.add("visible");
+    hideOnboard();
+    renderAll();
+    setTimeout(() => text.focus(), 40);
+  }
+
+  function closeDrawer() {
+    drawerOpen = false;
+    drawer.classList.remove("open");
+    overlay.classList.remove("visible");
+  }
+
+  function postGeneralComment() {
+    const body = text.value.trim();
+    if (!body) return;
+    const section = activeSection || sectionFromViewport();
+    comments.push({
+      id: Date.now() + Math.random().toString(36).slice(2),
+      section,
+      author: getAuthor() || "Anonymous",
+      text: body,
+      ts: Date.now()
+    });
+    text.value = "";
+    activeSection = section;
+    saveComments();
+    list.scrollTop = 0;
+  }
+
+  function removeActiveHighlight() {
+    if (!activeHighlight) return;
+    const parent = activeHighlight.parentNode;
+    if (parent) {
+      while (activeHighlight.firstChild) parent.insertBefore(activeHighlight.firstChild, activeHighlight);
+      parent.removeChild(activeHighlight);
+      parent.normalize();
+    }
+    activeHighlight = null;
+  }
+
+  function hideSelectionPopover() {
+    selPopover.classList.remove("visible");
+    selInput.value = "";
+    selSend.disabled = true;
+    pendingSelection = null;
+    removeActiveHighlight();
+  }
+
+  function positionSelectionPopover(rect) {
+    const width = Math.min(320, window.innerWidth - 24);
+    const height = 132;
+    let top = rect.top - height - 8;
+    if (top < 8) top = rect.bottom + 8;
+    let left = rect.left + rect.width / 2;
+    left = Math.max(width / 2 + 12, Math.min(window.innerWidth - width / 2 - 12, left));
+    selPopover.style.top = `${top}px`;
+    selPopover.style.left = `${left}px`;
+  }
+
+  function wrapSelection(range) {
+    removeActiveHighlight();
+    try {
+      const mark = document.createElement("mark");
+      mark.className = "sel-active-highlight";
+      range.surroundContents(mark);
+      activeHighlight = mark;
+    } catch(e) {
+      activeHighlight = null;
+    }
+  }
+
+  function postSelectionComment() {
+    const body = selInput.value.trim();
+    if (!body || !pendingSelection) return;
+    comments.push({
+      id: Date.now() + Math.random().toString(36).slice(2),
+      section: pendingSelection.section,
+      author: getAuthor() || "Anonymous",
+      text: body,
+      quote: pendingSelection.quote,
+      ts: Date.now()
+    });
+    const section = pendingSelection.section;
+    hideSelectionPopover();
+    activeSection = section;
+    saveComments();
+    openDrawer(section);
+    list.scrollTop = 0;
+  }
+
+  function clearJumpHighlight() {
+    if (!jumpHighlight) return;
+    const parent = jumpHighlight.parentNode;
+    if (parent) {
+      while (jumpHighlight.firstChild) parent.insertBefore(jumpHighlight.firstChild, jumpHighlight);
+      parent.removeChild(jumpHighlight);
+      parent.normalize();
+    }
+    jumpHighlight = null;
+  }
+
+  function jumpToQuote(quote) {
+    clearJumpHighlight();
+    const needle = String(quote || "").trim();
+    if (!needle) return;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        let el = node.parentElement;
+        while (el) {
+          if (el.id === "cmntDrawer" || el.id === "selPopover" || el.classList?.contains("cmnt-onboard")) return NodeFilter.FILTER_REJECT;
+          if (["SCRIPT", "STYLE", "TEXTAREA"].includes(el.tagName)) return NodeFilter.FILTER_REJECT;
+          el = el.parentElement;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const chunks = [];
+    let combined = "";
+    let node;
+    while ((node = walker.nextNode())) {
+      chunks.push({ node, start: combined.length, end: combined.length + node.nodeValue.length });
+      combined += node.nodeValue;
+    }
+    const idx = combined.toLowerCase().indexOf(needle.toLowerCase());
+    if (idx < 0) return;
+    const end = idx + needle.length;
+    const startChunk = chunks.find(c => c.start <= idx && idx < c.end);
+    const endChunk = chunks.find(c => c.start < end && end <= c.end);
+    if (!startChunk || !endChunk) return;
+    try {
+      const range = document.createRange();
+      range.setStart(startChunk.node, idx - startChunk.start);
+      range.setEnd(endChunk.node, end - endChunk.start);
+      const mark = document.createElement("mark");
+      mark.className = "cmnt-jump-highlight";
+      range.surroundContents(mark);
+      jumpHighlight = mark;
+      mark.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(clearJumpHighlight, 2600);
+    } catch(e) {
+      startChunk.node.parentElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function hideOnboard() {
+    if (onboard) onboard.style.display = "none";
+    try { localStorage.setItem(ONBOARD_KEY, "1"); } catch(e) {}
+  }
+
+  fab.addEventListener("click", () => drawerOpen ? closeDrawer() : openDrawer(sectionFromViewport()));
+  closeBtn.addEventListener("click", closeDrawer);
+  overlay.addEventListener("click", closeDrawer);
+  submit.addEventListener("click", postGeneralComment);
+  text.addEventListener("input", renderChrome);
+  text.addEventListener("keydown", event => {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) postGeneralComment();
+  });
+
+  authorChip.addEventListener("click", event => {
+    event.stopPropagation();
+    authorEdit.classList.toggle("open");
+    if (authorEdit.classList.contains("open")) {
+      authorInput.value = getAuthor();
+      setTimeout(() => { authorInput.focus(); authorInput.select(); }, 40);
+    }
+  });
+  function commitAuthor() {
+    setAuthor(authorInput.value.trim());
+    authorEdit.classList.remove("open");
+  }
+  authorSave.addEventListener("click", commitAuthor);
+  authorInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") commitAuthor();
+    if (event.key === "Escape") authorEdit.classList.remove("open");
+  });
+  document.addEventListener("click", event => {
+    if (!authorEdit.contains(event.target) && !authorChip.contains(event.target)) authorEdit.classList.remove("open");
+  });
+
+  onboardDismiss.addEventListener("click", hideOnboard);
+  try { if (localStorage.getItem(ONBOARD_KEY)) hideOnboard(); } catch(e) { hideOnboard(); }
+
+  document.addEventListener("mouseup", event => {
+    if (event.target.closest("#cmntDrawer, #selPopover, .cmnt-onboard")) return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+    const selectedText = sel.toString().trim();
+    if (selectedText.length < 3) return;
+    const range = sel.getRangeAt(0).cloneRange();
+    const rect = range.getBoundingClientRect();
+    const section = sectionForElement(sel.anchorNode?.parentElement);
+    wrapSelection(sel.getRangeAt(0));
+    sel.removeAllRanges();
+    pendingSelection = { quote: selectedText, section };
+    selQuote.textContent = selectedText.length > 160 ? selectedText.slice(0, 160) + "..." : selectedText;
+    selAuthor.textContent = getAuthor() || "Anonymous";
+    positionSelectionPopover(rect);
+    selPopover.classList.add("visible");
+    selInput.value = "";
+    selSend.disabled = true;
+    setTimeout(() => selInput.focus(), 40);
+  });
+
+  document.addEventListener("mousedown", event => {
+    if (event.target.closest("#selPopover, .sel-active-highlight")) return;
+    const highlightAtDown = activeHighlight;
+    setTimeout(() => {
+      const sel = window.getSelection();
+      if ((!sel || sel.isCollapsed) && activeHighlight === highlightAtDown) hideSelectionPopover();
+    }, 80);
+  });
+
+  selInput.addEventListener("input", () => { selSend.disabled = !selInput.value.trim(); });
+  selInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") postSelectionComment();
+    if (event.key === "Escape") hideSelectionPopover();
+  });
+  selSend.addEventListener("click", postSelectionComment);
+
+  selAuthor.addEventListener("click", () => {
+    const name = prompt("Name to show on comments", getAuthor());
+    if (name !== null) setAuthor(name.trim());
+    selInput.focus();
+  });
+
+  updateAuthor();
+  renderAll();
+  loadComments();
+  setInterval(loadComments, 15000);
+})();
 </script>
 </body>
 </html>
