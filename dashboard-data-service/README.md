@@ -1,12 +1,14 @@
 # Dashboard data service
 
-Small Cloudflare Worker used by static dashboards to load fresh benchmark data without asking viewers to use GitHub.
+Small Vercel service used by static dashboards to load fresh benchmark data without asking viewers to use GitHub.
+
+The dashboard is still hosted as static HTML on GitHub Pages. This service only reads the latest data from the benchmark backend and returns it with browser-friendly CORS headers.
 
 ## Routes
 
-- `GET /` lists available dashboards.
-- `GET /ari-fast-routes` returns the cached ARI Fast benchmark data.
-- `GET /ari-fast-routes/refresh` fetches the newest benchmark data from the source backend, updates the cache, and returns it immediately.
+- `GET /api` lists available dashboards.
+- `GET /api/ari-fast-routes` returns the latest ARI Fast benchmark data.
+- `GET /api/ari-fast-routes/refresh` fetches the newest benchmark data from the source backend and returns it immediately.
 
 The current source for `ari-fast-routes` is:
 
@@ -16,39 +18,41 @@ https://tbt-routing.paas.livemap.sh/api/v1/field/feedback
 
 ## Deploy
 
-From this folder:
+### Option A: Vercel UI
 
-```bash
-npx wrangler deploy
-```
+1. Create a new Vercel project.
+2. Import this GitHub repository.
+3. Set **Root Directory** to `dashboard-data-service`.
+4. Deploy.
+5. Copy the deployed URL.
 
-Then attach the worker to the desired custom domain, for example:
-
-```text
-https://dashboard-data.livemap.sh
-```
-
-The dashboard currently expects:
+The dashboard expects a URL shaped like:
 
 ```text
-https://dashboard-data.livemap.sh/ari-fast-routes/refresh
+https://ari-fast-route-dashboard-data.vercel.app/api/ari-fast-routes/refresh
 ```
 
-## Optional KV cache
+If Vercel gives the project a different URL, update `DASHBOARD_DATA_SERVICE_URL` in `index.html`.
 
-The worker works without KV by using Cloudflare cache. For a more persistent shared snapshot, create a KV namespace:
+### Option B: Vercel CLI
+
+From this folder, run:
 
 ```bash
-npx wrangler kv namespace create DASHBOARD_DATA_KV
+npx vercel
 ```
 
-Then paste the generated id into `wrangler.toml` and uncomment the `kv_namespaces` block.
+For production:
+
+```bash
+npx vercel --prod
+```
 
 ## Add Another Dashboard
 
-Add a new entry to `DASHBOARDS` in `worker.js`:
+Add a new entry to `DASHBOARDS` in `api/[...path].js`:
 
-```js
+```javascript
 "another-dashboard": {
   sourceUrl: "https://example.com/data.jsonl",
   contentType: "application/x-ndjson; charset=utf-8"
@@ -58,5 +62,5 @@ Add a new entry to `DASHBOARDS` in `worker.js`:
 Then the dashboard can call:
 
 ```text
-https://dashboard-data.livemap.sh/another-dashboard/refresh
+https://your-vercel-project.vercel.app/api/another-dashboard/refresh
 ```
