@@ -2,6 +2,10 @@ name: Update feedback data
 
 on:
   workflow_dispatch:
+    inputs:
+      checked_at:
+        description: "UTC timestamp for the shared data refresh"
+        required: false
   schedule:
     - cron: "*/30 * * * *"
 
@@ -22,7 +26,10 @@ jobs:
             "https://tbt-routing.paas.livemap.sh/api/v1/field/feedback" \
             --output data/feedback.jsonl
           rows=$(wc -l < data/feedback.jsonl | tr -d ' ')
-          checked_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          checked_at="${{ github.event.inputs.checked_at }}"
+          if [ -z "$checked_at" ]; then
+            checked_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          fi
           printf '{\n  "checked_at": "%s",\n  "row_count": %s,\n  "source_url": "https://tbt-routing.paas.livemap.sh/api/v1/field/feedback"\n}\n' "$checked_at" "$rows" > data/feedback-meta.json
 
       - name: Commit changes

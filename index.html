@@ -2312,9 +2312,11 @@ async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const raw = await res.text();
     const saveStatus = res.headers.get("X-Dashboard-Data-Save") || "";
+    const checkedAtHeader = res.headers.get("X-Dashboard-Data-Checked-At") || "";
+    const checkedAt = checkedAtHeader ? new Date(checkedAtHeader) : options.checkedAt;
     loadFeedbackJsonl(raw, sourceLabel, {
       ...options,
-      checkedAt: options.markCheckedAt ? new Date() : options.checkedAt,
+      checkedAt,
       sourceMessage: dataSaveMessage(saveStatus)
     });
     return true;
@@ -2352,7 +2354,7 @@ async function loadExternalDataMeta(options = {}) {
 }
 
 async function loadLatestTestData(options = {}) {
-  return loadFeedbackFromUrl(`${DASHBOARD_DATA_SERVICE_URL}/refresh`, "latest test data", { ...options, markCheckedAt: true });
+  return loadFeedbackFromUrl(`${DASHBOARD_DATA_SERVICE_URL}/refresh`, "latest test data", options);
 }
 
 const pasteButton = document.getElementById("btn-load");

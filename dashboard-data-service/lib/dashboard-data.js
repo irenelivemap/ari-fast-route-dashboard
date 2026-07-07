@@ -9,7 +9,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Expose-Headers": "X-Dashboard-Data-Save, X-Dashboard-Data-Save-Error",
+  "Access-Control-Expose-Headers": "X-Dashboard-Data-Checked-At, X-Dashboard-Data-Save, X-Dashboard-Data-Save-Error",
   "Vary": "Origin"
 };
 
@@ -52,7 +52,7 @@ async function fetchSource(config) {
   return response.text();
 }
 
-async function queueSnapshotUpdate() {
+async function queueSnapshotUpdate(checkedAt) {
   const token = process.env.GITHUB_WORKFLOW_TOKEN;
   if (!token) return { status: "unconfigured" };
 
@@ -68,7 +68,10 @@ async function queueSnapshotUpdate() {
       "User-Agent": "ari-fast-route-dashboard-data-service",
       "X-GitHub-Api-Version": "2022-11-28"
     },
-    body: JSON.stringify({ ref })
+    body: JSON.stringify({
+      ref,
+      inputs: checkedAt ? { checked_at: checkedAt } : {}
+    })
   });
 
   if (response.status === 204) return { status: "queued" };
@@ -91,10 +94,11 @@ async function sendDashboardData(req, res, slug, { refresh = false } = {}) {
 
   try {
     const body = await fetchSource(config);
+    const checkedAt = refresh ? new Date().toISOString() : "";
     let save = { status: "not-requested" };
     if (refresh) {
       try {
-        save = await queueSnapshotUpdate();
+        save = await queueSnapshotUpdate(checkedAt);
       } catch (error) {
         save = { status: "failed", error: error.message.replace(/[\r\n]+/g, " ") };
       }
@@ -104,6 +108,7 @@ async function sendDashboardData(req, res, slug, { refresh = false } = {}) {
       "Cache-Control": refresh ? "no-store" : "s-maxage=60, stale-while-revalidate=300",
       "X-Dashboard-Data-Source": "source",
       "X-Dashboard-Slug": slug,
+      ...(checkedAt ? { "X-Dashboard-Data-Checked-At": checkedAt } : {}),
       "X-Dashboard-Data-Save": save.status,
       ...(save.error ? { "X-Dashboard-Data-Save-Error": save.error } : {})
     });
