@@ -2222,6 +2222,7 @@ if (parseStatus) parseStatus.textContent = "";
   let activeReplyId = null;
   let activeEditKey = null;
   let activeMenuKey = null;
+  let selectionTimer = null;
 
   const fab = document.getElementById("cmntFab");
   const fabLabel = document.getElementById("cmntFabLabel");
@@ -2953,6 +2954,57 @@ if (parseStatus) parseStatus.textContent = "";
     removeActiveHighlight();
   }
 
+  function elementFromSelectionNode(node) {
+    if (!node) return null;
+    return node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  }
+
+  function selectionAllowedInReport(sel) {
+    const range = sel.getRangeAt(0);
+    const root = elementFromSelectionNode(range.commonAncestorContainer);
+    if (!root) return false;
+    if (root.closest("#cmntDrawer, #selPopover, #selAction, .cmnt-onboard")) return false;
+    if (root.closest("input, textarea, button, select, option")) return false;
+    return document.body.contains(root);
+  }
+
+  function selectionRect(range) {
+    const rects = Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0);
+    if (!rects.length) return range.getBoundingClientRect();
+    const left = Math.min(...rects.map(rect => rect.left));
+    const top = Math.min(...rects.map(rect => rect.top));
+    const right = Math.max(...rects.map(rect => rect.right));
+    const bottom = Math.max(...rects.map(rect => rect.bottom));
+    return { left, top, right, bottom, width: right - left, height: bottom - top };
+  }
+
+  function updateSelectionAction() {
+    if (selPopover.classList.contains("visible")) return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed || !sel.toString().trim()) {
+      if (!selPopover.classList.contains("visible")) {
+        selAction.classList.remove("visible");
+        pendingSelection = null;
+      }
+      return;
+    }
+    const selectedText = sel.toString().trim();
+    if (selectedText.length < 3 || !selectionAllowedInReport(sel)) return;
+    const range = sel.getRangeAt(0).cloneRange();
+    const rect = selectionRect(range);
+    if (!rect || rect.width <= 0 || rect.height <= 0) return;
+    const section = sectionForElement(elementFromSelectionNode(sel.anchorNode));
+    pendingSelection = { quote: selectedText, section, rect, range };
+    selPopover.classList.remove("visible");
+    positionSelectionAction(rect);
+    selAction.classList.add("visible");
+  }
+
+  function scheduleSelectionAction(delay = 60) {
+    clearTimeout(selectionTimer);
+    selectionTimer = setTimeout(updateSelectionAction, delay);
+  }
+
   function positionSelectionAction(rect) {
     const width = 110;
     const isLargeSelection = rect.width > 360 || rect.height > 44;
@@ -2981,11 +3033,9 @@ if (parseStatus) parseStatus.textContent = "";
     if (!pendingSelection) return;
     selAction.classList.remove("visible");
     if (pendingSelection.range) {
-      const highlighted = wrapSelection(pendingSelection.range.cloneRange());
-      if (highlighted) {
-        const sel = window.getSelection();
-        if (sel) sel.removeAllRanges();
-      }
+      wrapSelection(pendingSelection.range.cloneRange());
+      const sel = window.getSelection();
+      if (sel) sel.removeAllRanges();
     }
     selQuote.textContent = pendingSelection.quote.length > 160 ? pendingSelection.quote.slice(0, 160) + "..." : pendingSelection.quote;
     if (selNameInput) selNameInput.value = getAuthor();
@@ -3130,21 +3180,21 @@ if (parseStatus) parseStatus.textContent = "";
   onboardDismiss.addEventListener("click", hideOnboard);
   try { if (localStorage.getItem(ONBOARD_KEY)) hideOnboard(); } catch(e) { hideOnboard(); }
 
+  document.addEventListener("selectionchange", () => scheduleSelectionAction(90));
+
   document.addEventListener("mouseup", event => {
     if (event.target.closest("#cmntDrawer, #selPopover, .cmnt-onboard")) return;
-    setTimeout(() => {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
-      const selectedText = sel.toString().trim();
-      if (selectedText.length < 3) return;
-      const range = sel.getRangeAt(0).cloneRange();
-      const rect = range.getBoundingClientRect();
-      const section = sectionForElement(sel.anchorNode?.parentElement);
-      pendingSelection = { quote: selectedText, section, rect, range };
-      selPopover.classList.remove("visible");
-      positionSelectionAction(rect);
-      selAction.classList.add("visible");
-    }, 40);
+    scheduleSelectionAction(40);
+  });
+
+  document.addEventListener("touchend", event => {
+    if (event.target.closest("#cmntDrawer, #selPopover, .cmnt-onboard")) return;
+    scheduleSelectionAction(120);
+  });
+
+  document.addEventListener("keyup", event => {
+    if (event.key === "Escape") return;
+    scheduleSelectionAction(40);
   });
 
   document.addEventListener("mousedown", event => {
