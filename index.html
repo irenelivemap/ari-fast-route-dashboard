@@ -61,21 +61,6 @@
     font-size: 15px;
   }
   .study-context strong { color: var(--ink-2); font-weight: 600; }
-  .data-refresh {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 16px;
-  }
-  .data-refresh button.btn {
-    padding: 7px 15px;
-    font-size: 14px;
-  }
-  .data-refresh button.btn:disabled {
-    opacity: .55;
-    cursor: wait;
-  }
   .path-divider {
     border: none;
     border-top: 3px dotted var(--ink-3);
@@ -335,8 +320,6 @@
   button.btn:focus-visible { outline: 2px solid var(--livemap); outline-offset: 2px; }
   #parse-status { font-size: 14px; color: var(--ink-2); }
   #parse-status.err { color: var(--tie-poor); }
-  .source-status { display: block; margin-top: 8px; font-size: 13px; color: var(--ink-3); }
-  .source-status.err { color: var(--tie-poor); }
 
   .cmnt-fab {
     position: fixed;
@@ -1061,10 +1044,6 @@
   <header>
     <h1>When routes diverge, whose wins?</h1>
     <p class="sub" id="study-context"></p>
-    <div class="data-refresh">
-      <button class="btn ghost" id="btn-live" type="button" title="Refresh this dashboard view with the newest available data">Refresh data</button>
-      <span class="source-status" id="source-status" aria-live="polite"></span>
-    </div>
   </header>
 
   <div class="overview">
@@ -1204,7 +1183,6 @@ const RATER_ALIASES = { "martijn": "Martijn" };
 const EXCLUDED_RATERS = new Set([]);
 const REASONS = ["Misses shortcut", "Unclear shortcut", "Longer distance", "Longer time", "More turns", "Crossing friction", "More elevation", "More stairs", "Other"];
 const EXTERNAL_DATA_URL = "data/feedback.jsonl";
-const LIVE_SOURCE_URL = "https://tbt-routing.paas.livemap.sh/api/v1/field/feedback";
 const LIVE_REASON_LABELS = {
   longer_time: "Longer time",
   longer_distance: "Longer distance",
@@ -2214,7 +2192,6 @@ function renderAll(rebuildChips = true) {
 
 function loadRecords(records, errors, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status");
-  const sourceStatus = document.getElementById("source-status");
   if (!records.length) {
     if (!options.silent && status) {
       status.textContent = "No valid rows found.";
@@ -2241,7 +2218,6 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   const lastText = last ? ` · latest ${new Date(last).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}` : "";
   const message = `Loaded ${DATA.length} rows from ${sourceLabel}` + (excluded ? ` · ${excluded} excluded` : "") + (errors.length ? ` · ${errors.length} row(s) skipped` : "") + lastText;
   if (!options.silent && status) status.textContent = message;
-  if (sourceStatus) sourceStatus.textContent = message;
 }
 
 function loadRaw(raw, sourceLabel, options = {}) {
@@ -2255,7 +2231,7 @@ function loadFeedbackJsonl(raw, sourceLabel, options = {}) {
 }
 
 async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
-  const status = document.getElementById("parse-status") || document.getElementById("source-status");
+  const status = document.getElementById("parse-status");
   const fetchUrl = options.cacheBust ? `${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}` : url;
   try {
     const res = await fetch(fetchUrl, { cache: "no-store" });
@@ -2276,12 +2252,7 @@ async function loadExternalData(options = {}) {
   return loadFeedbackFromUrl(EXTERNAL_DATA_URL, "latest published data file", options);
 }
 
-async function loadLiveData(options = {}) {
-  return loadFeedbackFromUrl(LIVE_SOURCE_URL, "live feedback source", options);
-}
-
 const pasteButton = document.getElementById("btn-load");
-const liveButton = document.getElementById("btn-live");
 const resetButton = document.getElementById("btn-reset");
 if (pasteButton) {
   pasteButton.onclick = () => {
@@ -2292,36 +2263,6 @@ if (pasteButton) {
       return;
     }
     loadRaw(raw, "pasted text");
-  };
-}
-if (liveButton) {
-  liveButton.onclick = async () => {
-    const status = document.getElementById("parse-status") || document.getElementById("source-status");
-    const originalText = liveButton.textContent;
-    liveButton.disabled = true;
-    liveButton.textContent = "Refreshing...";
-    if (status) {
-      status.textContent = "Refreshing data...";
-      status.className = "";
-    }
-    const liveLoaded = await loadLiveData({
-      silent: false,
-      cacheBust: true,
-      errorMessage: "Could not reach the live source. Trying the latest published data file."
-    });
-    if (!liveLoaded) {
-      const publishedLoaded = await loadExternalData({
-        silent: false,
-        cacheBust: true,
-        errorMessage: "Could not refresh the published data file."
-      });
-      if (publishedLoaded && status) {
-        status.textContent = "Loaded latest published data. The live source was not reachable from this browser.";
-        status.className = "";
-      }
-    }
-    liveButton.disabled = false;
-    liveButton.textContent = originalText;
   };
 }
 if (resetButton) {
