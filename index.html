@@ -619,6 +619,45 @@
   }
   .cmnt-action:hover { border-color: var(--ink-3); color: var(--ink); background: #F6F6F0; }
   .cmnt-actions .cmnt-heart { margin-left: auto; }
+  .cmnt-edit-compose {
+    display: grid;
+    gap: 7px;
+    margin-top: 8px;
+  }
+  .cmnt-edit-compose textarea {
+    width: 100%;
+    min-height: 76px;
+    resize: vertical;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    padding: 8px 9px;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.45;
+    outline: none;
+  }
+  .cmnt-edit-compose textarea:focus { border-color: var(--livemap); }
+  .cmnt-edit-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 7px;
+  }
+  .cmnt-edit-footer button {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--ink-2);
+    padding: 6px 11px;
+    font: 600 12px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .cmnt-edit-footer button.primary {
+    border-color: var(--livemap);
+    background: var(--livemap);
+    color: #fff;
+  }
   .cmnt-replies {
     display: grid;
     gap: 8px;
@@ -2134,6 +2173,7 @@ if (parseStatus) parseStatus.textContent = "";
   let activeHighlight = null;
   let jumpHighlight = null;
   let activeReplyId = null;
+  let activeEditKey = null;
 
   const fab = document.getElementById("cmntFab");
   const fabLabel = document.getElementById("cmntFabLabel");
@@ -2222,6 +2262,14 @@ if (parseStatus) parseStatus.textContent = "";
       likedBy: Array.isArray(comment?.likedBy) ? comment.likedBy : [],
       replies: Array.isArray(comment?.replies) ? comment.replies.map(normalizeReply) : []
     };
+  }
+
+  function isMine(item) {
+    if (!item) return false;
+    const clientId = getClientId();
+    if (item.clientId) return item.clientId === clientId;
+    const author = getAuthor().trim();
+    return !!author && item.author === author;
   }
 
   function normalizeReply(reply) {
@@ -2412,42 +2460,66 @@ if (parseStatus) parseStatus.textContent = "";
       const c = normalizeComment(rawComment);
       const liked = c.likedBy.includes(clientId);
       const replyCount = c.replies.length;
+      const commentEditKey = `comment:${c.id}`;
+      const isEditingComment = activeEditKey === commentEditKey;
+      const canEditComment = isMine(c);
       return `
       <article class="cmnt-item" data-id="${safe(c.id)}">
         <div class="cmnt-item-head">
           <span class="cmnt-item-meta">
             <span class="cmnt-item-author">${safe(c.author || "Anonymous")}</span>
-            <span>${formatTime(c.ts)}</span>
+            <span>${formatTime(c.ts)}${c.editedTs ? " · edited" : ""}</span>
           </span>
           <span class="cmnt-item-tools">
-            <button class="cmnt-delete" type="button" title="Delete" data-delete="${safe(c.id)}">×</button>
+            ${canEditComment ? `<button class="cmnt-delete" type="button" title="Delete" data-delete="${safe(c.id)}">×</button>` : ""}
           </span>
         </div>
         ${c.quote ? `<div class="cmnt-quote" data-quote="${safe(c.quote)}">${safe(c.quote)}</div>` : ""}
-        <div class="cmnt-text">${safe(c.text)}</div>
+        ${isEditingComment ? `
+          <div class="cmnt-edit-compose" data-edit-box="${safe(commentEditKey)}">
+            <textarea data-edit-text="${safe(commentEditKey)}">${safe(c.text)}</textarea>
+            <div class="cmnt-edit-footer">
+              <button type="button" data-edit-cancel="${safe(commentEditKey)}">Cancel</button>
+              <button class="primary" type="button" data-edit-save="${safe(commentEditKey)}">Save</button>
+            </div>
+          </div>
+        ` : `<div class="cmnt-text">${safe(c.text)}</div>`}
         ${activeSection === null ? `<span class="cmnt-section">${safe(sectionLabel(c.section))}</span>` : ""}
-        <div class="cmnt-actions">
+        ${isEditingComment ? "" : `<div class="cmnt-actions">
           <button class="cmnt-action" type="button" data-reply-toggle="${safe(c.id)}">Reply${replyCount ? ` · ${replyCount}` : ""}</button>
+          ${canEditComment ? `<button class="cmnt-action" type="button" data-edit-start="${safe(commentEditKey)}">Edit</button>` : ""}
           <button class="cmnt-heart${liked ? " liked" : ""}" type="button" data-like="${safe(c.id)}" title="${liked ? "Unlike" : "Like"}" aria-label="${liked ? "Unlike comment" : "Like comment"}">
             <span class="cmnt-heart-icon" aria-hidden="true">${liked ? "♥" : "♡"}</span>${c.likedBy.length ? `<span class="cmnt-heart-count">${c.likedBy.length}</span>` : ""}
           </button>
-        </div>
+        </div>`}
         ${replyCount ? `<div class="cmnt-replies">
           ${c.replies.map(rawReply => {
             const reply = normalizeReply(rawReply);
             const replyLiked = reply.likedBy.includes(clientId);
+            const replyEditKey = `reply:${c.id}:${reply.id}`;
+            const isEditingReply = activeEditKey === replyEditKey;
+            const canEditReply = isMine(reply);
             return `
             <div class="cmnt-reply">
               <div class="cmnt-reply-head">
                 <span class="cmnt-reply-author">${safe(reply.author || "Anonymous")}</span>
-                <span>${formatTime(reply.ts)}</span>
+                <span>${formatTime(reply.ts)}${reply.editedTs ? " · edited" : ""}</span>
               </div>
-              <div class="cmnt-reply-text">${safe(reply.text)}</div>
-              <div class="cmnt-reply-actions">
+              ${isEditingReply ? `
+                <div class="cmnt-edit-compose" data-edit-box="${safe(replyEditKey)}">
+                  <textarea data-edit-text="${safe(replyEditKey)}">${safe(reply.text)}</textarea>
+                  <div class="cmnt-edit-footer">
+                    <button type="button" data-edit-cancel="${safe(replyEditKey)}">Cancel</button>
+                    <button class="primary" type="button" data-edit-save="${safe(replyEditKey)}">Save</button>
+                  </div>
+                </div>
+              ` : `<div class="cmnt-reply-text">${safe(reply.text)}</div>`}
+              ${isEditingReply ? "" : `<div class="cmnt-reply-actions">
+                ${canEditReply ? `<button class="cmnt-action" type="button" data-edit-start="${safe(replyEditKey)}">Edit</button>` : ""}
                 <button class="cmnt-heart${replyLiked ? " liked" : ""}" type="button" data-reply-like="${safe(reply.id)}" data-reply-parent="${safe(c.id)}" title="${replyLiked ? "Unlike" : "Like"}" aria-label="${replyLiked ? "Unlike reply" : "Like reply"}">
                   <span class="cmnt-heart-icon" aria-hidden="true">${replyLiked ? "♥" : "♡"}</span>${reply.likedBy.length ? `<span class="cmnt-heart-count">${reply.likedBy.length}</span>` : ""}
                 </button>
-              </div>
+              </div>`}
             </div>
           `}).join("")}
         </div>` : ""}
@@ -2465,7 +2537,7 @@ if (parseStatus) parseStatus.textContent = "";
     list.querySelectorAll("[data-delete]").forEach(button => {
       button.addEventListener("click", event => {
         event.stopPropagation();
-        comments = comments.filter(c => c.id !== button.dataset.delete);
+        comments = comments.filter(c => c.id !== button.dataset.delete || !isMine(normalizeComment(c)));
         saveComments();
       });
     });
@@ -2489,6 +2561,43 @@ if (parseStatus) parseStatus.textContent = "";
         event.stopPropagation();
         activeReplyId = activeReplyId === button.dataset.replyToggle ? null : button.dataset.replyToggle;
         renderAll();
+      });
+    });
+    list.querySelectorAll("[data-edit-start]").forEach(button => {
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        activeEditKey = button.dataset.editStart;
+        activeReplyId = null;
+        renderAll();
+        setTimeout(() => {
+          const editor = list.querySelector(`[data-edit-text="${CSS.escape(activeEditKey)}"]`);
+          if (editor) {
+            editor.focus();
+            editor.setSelectionRange(editor.value.length, editor.value.length);
+          }
+        }, 30);
+      });
+    });
+    list.querySelectorAll("[data-edit-cancel]").forEach(button => {
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        activeEditKey = null;
+        renderAll();
+      });
+    });
+    list.querySelectorAll("[data-edit-save]").forEach(button => {
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        saveEdit(button.dataset.editSave);
+      });
+    });
+    list.querySelectorAll("[data-edit-text]").forEach(input => {
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) saveEdit(input.dataset.editText);
+        if (event.key === "Escape") {
+          activeEditKey = null;
+          renderAll();
+        }
       });
     });
     list.querySelectorAll("[data-reply-cancel]").forEach(button => {
@@ -2545,6 +2654,40 @@ if (parseStatus) parseStatus.textContent = "";
     if (changed) saveComments();
   }
 
+  function saveEdit(editKey) {
+    const editor = list.querySelector(`[data-edit-text="${CSS.escape(editKey)}"]`);
+    const body = editor?.value.trim() || "";
+    if (!body) return;
+    const parts = editKey.split(":");
+    let changed = false;
+    if (parts[0] === "comment") {
+      const commentId = parts[1];
+      comments = comments.map(comment => {
+        const normalized = normalizeComment(comment);
+        if (normalized.id !== commentId || !isMine(normalized)) return normalized;
+        changed = true;
+        return { ...normalized, text: body, editedTs: Date.now() };
+      });
+    }
+    if (parts[0] === "reply") {
+      const commentId = parts[1];
+      const replyId = parts[2];
+      comments = comments.map(comment => {
+        const normalized = normalizeComment(comment);
+        if (normalized.id !== commentId) return normalized;
+        const replies = normalized.replies.map(reply => {
+          if (reply.id !== replyId || !isMine(reply)) return reply;
+          changed = true;
+          return { ...reply, text: body, editedTs: Date.now() };
+        });
+        return { ...normalized, replies };
+      });
+    }
+    if (!changed) return;
+    activeEditKey = null;
+    saveComments();
+  }
+
   function postReply(commentId) {
     const nameInput = list.querySelector(`[data-reply-name="${CSS.escape(commentId)}"]`);
     const replyInput = list.querySelector(`[data-reply-text="${CSS.escape(commentId)}"]`);
@@ -2557,6 +2700,7 @@ if (parseStatus) parseStatus.textContent = "";
       author: name || "Anonymous",
       text: body,
       ts: Date.now(),
+      clientId: getClientId(),
       likedBy: []
     };
     comments = comments.map(comment => {
@@ -2607,7 +2751,8 @@ if (parseStatus) parseStatus.textContent = "";
       section,
       author: getAuthor() || "Anonymous",
       text: body,
-      ts: Date.now()
+      ts: Date.now(),
+      clientId: getClientId()
     });
     text.value = "";
     activeSection = section;
@@ -2692,7 +2837,8 @@ if (parseStatus) parseStatus.textContent = "";
       author,
       text: body,
       quote: pendingSelection.quote,
-      ts: Date.now()
+      ts: Date.now(),
+      clientId: getClientId()
     });
     const section = pendingSelection.section;
     hideSelectionPopover();
