@@ -2457,6 +2457,26 @@ if (parseStatus) parseStatus.textContent = "";
     return { replies: nextReplies, changed };
   }
 
+  function removeReplyFromTree(replies = [], targetId) {
+    let changed = false;
+    const nextReplies = [];
+    replies.forEach(rawReply => {
+      const reply = normalizeReply(rawReply);
+      if (reply.id === targetId && isMine(reply)) {
+        changed = true;
+        return;
+      }
+      const nested = removeReplyFromTree(reply.replies, targetId);
+      if (nested.changed) {
+        changed = true;
+        nextReplies.push({ ...reply, replies: nested.replies });
+        return;
+      }
+      nextReplies.push(reply);
+    });
+    return { replies: nextReplies, changed };
+  }
+
   function renderTabs() {
     const allCount = activityCount(comments);
     tabs.innerHTML = `
@@ -2499,7 +2519,10 @@ if (parseStatus) parseStatus.textContent = "";
         <div class="cmnt-reply">
           <div class="cmnt-reply-head">
             <span class="cmnt-reply-author">${safe(reply.author || "Anonymous")}</span>
-            <span>${formatTime(reply.ts)}${reply.editedTs ? " · edited" : ""}</span>
+            <span class="cmnt-item-meta">
+              <span>${formatTime(reply.ts)}${reply.editedTs ? " · edited" : ""}</span>
+              ${canEditReply ? `<button class="cmnt-delete" type="button" title="Delete" data-reply-delete="${safe(reply.id)}">×</button>` : ""}
+            </span>
           </div>
           ${isEditingReply ? `
             <div class="cmnt-edit-compose" data-edit-box="${safe(replyEditKey)}">
@@ -2567,6 +2590,12 @@ if (parseStatus) parseStatus.textContent = "";
         event.stopPropagation();
         comments = comments.filter(c => c.id !== button.dataset.delete || !isMine(normalizeComment(c)));
         saveComments();
+      });
+    });
+    list.querySelectorAll("[data-reply-delete]").forEach(button => {
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        deleteReply(button.dataset.replyDelete);
       });
     });
     list.querySelectorAll("[data-quote]").forEach(node => {
@@ -2712,6 +2741,20 @@ if (parseStatus) parseStatus.textContent = "";
     if (!changed) return;
     activeEditKey = null;
     saveComments();
+  }
+
+  function deleteReply(replyId) {
+    let changed = false;
+    comments = comments.map(comment => {
+      const normalized = normalizeComment(comment);
+      const updated = removeReplyFromTree(normalized.replies, replyId);
+      if (!updated.changed) return normalized;
+      changed = true;
+      return { ...normalized, replies: updated.replies };
+    });
+    if (activeReplyId === replyId) activeReplyId = null;
+    if (activeEditKey === `reply:${replyId}`) activeEditKey = null;
+    if (changed) saveComments();
   }
 
   function postReply(commentId) {
