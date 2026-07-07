@@ -2159,7 +2159,6 @@ if (parseStatus) parseStatus.textContent = "";
   const ONBOARD_KEY = "ari_fast_route_dashboard_comment_onboard_seen";
   const SECTIONS = [
     { id: "atGlance", label: "At a glance", selectors: ["header", ".overview", "#priority-summary"] },
-    { id: "detail", label: "Detailed report", selectors: ["#detail-report"] },
     { id: "raters", label: "Verdicts by rater", selectors: ["#rater-chart-section"] },
     { id: "reasons", label: "Losing route reasons", selectors: ["#reasons-section"] },
     { id: "themes", label: "Free-text themes", selectors: ["#comment-theme-section"] }
@@ -2214,7 +2213,6 @@ if (parseStatus) parseStatus.textContent = "";
     if (el.closest("#rater-chart-section")) return "raters";
     if (el.closest("#reasons-section")) return "reasons";
     if (el.closest("#comment-theme-section")) return "themes";
-    if (el.closest("#detail-report")) return "detail";
     if (el.closest("header, .overview, #priority-summary")) return "atGlance";
     return sectionFromViewport();
   }
