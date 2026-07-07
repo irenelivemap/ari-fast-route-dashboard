@@ -1066,8 +1066,8 @@
     <h1>When routes diverge, whose wins?</h1>
     <p class="sub" id="study-context"></p>
     <div class="data-refresh">
-      <button class="btn" id="btn-latest-tests" type="button" title="Load the newest benchmark results into this dashboard view">Load latest tests</button>
-      <span class="data-refresh-help">Use this after adding new benchmark results.</span>
+      <button class="btn" id="btn-latest-tests" type="button" title="Check the benchmark backend for new data">Check for new data</button>
+      <span class="data-refresh-help">The published data refreshes every 30 minutes. Use this if new tests were just added.</span>
       <span class="source-status" id="source-status" aria-live="polite"></span>
     </div>
   </header>
@@ -2309,7 +2309,7 @@ if (latestTestsButton) {
     latestTestsButton.disabled = true;
     latestTestsButton.textContent = "Loading...";
     if (status) {
-      status.textContent = "Loading latest benchmark results...";
+      status.textContent = "Checking for new benchmark data...";
       status.className = "source-status";
     }
     const loaded = await loadLatestTestData({
