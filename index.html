@@ -618,6 +618,7 @@
     cursor: pointer;
   }
   .cmnt-action:hover { border-color: var(--ink-3); color: var(--ink); background: #F6F6F0; }
+  .cmnt-actions .cmnt-heart { margin-left: auto; }
   .cmnt-replies {
     display: grid;
     gap: 8px;
@@ -645,6 +646,12 @@
     font-size: 13px;
     line-height: 1.45;
   }
+  .cmnt-reply-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+  }
+  .cmnt-reply-actions .cmnt-heart { padding-right: 0; }
   .cmnt-reply-compose {
     display: grid;
     gap: 7px;
@@ -2213,14 +2220,32 @@ if (parseStatus) parseStatus.textContent = "";
     return {
       ...comment,
       likedBy: Array.isArray(comment?.likedBy) ? comment.likedBy : [],
-      replies: Array.isArray(comment?.replies) ? comment.replies : []
+      replies: Array.isArray(comment?.replies) ? comment.replies.map(normalizeReply) : []
+    };
+  }
+
+  function normalizeReply(reply) {
+    return {
+      ...reply,
+      likedBy: Array.isArray(reply?.likedBy) ? reply.likedBy : []
     };
   }
 
   function mergeReplies(a = [], b = []) {
     const byId = new Map();
     [...a, ...b].forEach(reply => {
-      if (reply && reply.id) byId.set(reply.id, reply);
+      if (!reply || !reply.id) return;
+      const next = normalizeReply(reply);
+      const existing = byId.get(next.id);
+      if (!existing) {
+        byId.set(next.id, next);
+        return;
+      }
+      byId.set(next.id, {
+        ...existing,
+        ...next,
+        likedBy: [...new Set([...(existing.likedBy || []), ...(next.likedBy || [])])]
+      });
     });
     return [...byId.values()].sort((x, y) => (x.ts || 0) - (y.ts || 0));
   }
@@ -2395,9 +2420,6 @@ if (parseStatus) parseStatus.textContent = "";
             <span>${formatTime(c.ts)}</span>
           </span>
           <span class="cmnt-item-tools">
-            <button class="cmnt-heart${liked ? " liked" : ""}" type="button" data-like="${safe(c.id)}" title="${liked ? "Unlike" : "Like"}" aria-label="${liked ? "Unlike comment" : "Like comment"}">
-              <span class="cmnt-heart-icon" aria-hidden="true">${liked ? "♥" : "♡"}</span>${c.likedBy.length ? `<span class="cmnt-heart-count">${c.likedBy.length}</span>` : ""}
-            </button>
             <button class="cmnt-delete" type="button" title="Delete" data-delete="${safe(c.id)}">×</button>
           </span>
         </div>
@@ -2406,17 +2428,28 @@ if (parseStatus) parseStatus.textContent = "";
         ${activeSection === null ? `<span class="cmnt-section">${safe(sectionLabel(c.section))}</span>` : ""}
         <div class="cmnt-actions">
           <button class="cmnt-action" type="button" data-reply-toggle="${safe(c.id)}">Reply${replyCount ? ` · ${replyCount}` : ""}</button>
+          <button class="cmnt-heart${liked ? " liked" : ""}" type="button" data-like="${safe(c.id)}" title="${liked ? "Unlike" : "Like"}" aria-label="${liked ? "Unlike comment" : "Like comment"}">
+            <span class="cmnt-heart-icon" aria-hidden="true">${liked ? "♥" : "♡"}</span>${c.likedBy.length ? `<span class="cmnt-heart-count">${c.likedBy.length}</span>` : ""}
+          </button>
         </div>
         ${replyCount ? `<div class="cmnt-replies">
-          ${c.replies.map(reply => `
+          ${c.replies.map(rawReply => {
+            const reply = normalizeReply(rawReply);
+            const replyLiked = reply.likedBy.includes(clientId);
+            return `
             <div class="cmnt-reply">
               <div class="cmnt-reply-head">
                 <span class="cmnt-reply-author">${safe(reply.author || "Anonymous")}</span>
                 <span>${formatTime(reply.ts)}</span>
               </div>
               <div class="cmnt-reply-text">${safe(reply.text)}</div>
+              <div class="cmnt-reply-actions">
+                <button class="cmnt-heart${replyLiked ? " liked" : ""}" type="button" data-reply-like="${safe(reply.id)}" data-reply-parent="${safe(c.id)}" title="${replyLiked ? "Unlike" : "Like"}" aria-label="${replyLiked ? "Unlike reply" : "Like reply"}">
+                  <span class="cmnt-heart-icon" aria-hidden="true">${replyLiked ? "♥" : "♡"}</span>${reply.likedBy.length ? `<span class="cmnt-heart-count">${reply.likedBy.length}</span>` : ""}
+                </button>
+              </div>
             </div>
-          `).join("")}
+          `}).join("")}
         </div>` : ""}
         ${activeReplyId === c.id ? `
           <div class="cmnt-reply-compose" data-reply-box="${safe(c.id)}">
@@ -2443,6 +2476,12 @@ if (parseStatus) parseStatus.textContent = "";
       button.addEventListener("click", event => {
         event.stopPropagation();
         likeComment(button.dataset.like);
+      });
+    });
+    list.querySelectorAll("[data-reply-like]").forEach(button => {
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        likeReply(button.dataset.replyParent, button.dataset.replyLike);
       });
     });
     list.querySelectorAll("[data-reply-toggle]").forEach(button => {
@@ -2487,6 +2526,25 @@ if (parseStatus) parseStatus.textContent = "";
     if (changed) saveComments();
   }
 
+  function likeReply(commentId, replyId) {
+    const clientId = getClientId();
+    let changed = false;
+    comments = comments.map(comment => {
+      if (comment.id !== commentId) return comment;
+      const normalized = normalizeComment(comment);
+      const replies = normalized.replies.map(reply => {
+        if (reply.id !== replyId) return reply;
+        changed = true;
+        if (reply.likedBy.includes(clientId)) {
+          return { ...reply, likedBy: reply.likedBy.filter(id => id !== clientId) };
+        }
+        return { ...reply, likedBy: [...reply.likedBy, clientId] };
+      });
+      return { ...normalized, replies };
+    });
+    if (changed) saveComments();
+  }
+
   function postReply(commentId) {
     const nameInput = list.querySelector(`[data-reply-name="${CSS.escape(commentId)}"]`);
     const replyInput = list.querySelector(`[data-reply-text="${CSS.escape(commentId)}"]`);
@@ -2498,7 +2556,8 @@ if (parseStatus) parseStatus.textContent = "";
       id: Date.now() + Math.random().toString(36).slice(2),
       author: name || "Anonymous",
       text: body,
-      ts: Date.now()
+      ts: Date.now(),
+      likedBy: []
     };
     comments = comments.map(comment => {
       if (comment.id !== commentId) return comment;
