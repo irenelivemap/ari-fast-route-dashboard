@@ -2977,6 +2977,13 @@ if (parseStatus) parseStatus.textContent = "";
   function openSelectionCommentPopover() {
     if (!pendingSelection) return;
     selAction.classList.remove("visible");
+    if (pendingSelection.range) {
+      const highlighted = wrapSelection(pendingSelection.range.cloneRange());
+      if (highlighted) {
+        const sel = window.getSelection();
+        if (sel) sel.removeAllRanges();
+      }
+    }
     selQuote.textContent = pendingSelection.quote.length > 160 ? pendingSelection.quote.slice(0, 160) + "..." : pendingSelection.quote;
     if (selNameInput) selNameInput.value = getAuthor();
     positionSelectionPopover(pendingSelection.rect);
@@ -2993,8 +3000,10 @@ if (parseStatus) parseStatus.textContent = "";
       mark.className = "sel-active-highlight";
       range.surroundContents(mark);
       activeHighlight = mark;
+      return true;
     } catch(e) {
       activeHighlight = null;
+      return false;
     }
   }
 
@@ -3128,7 +3137,7 @@ if (parseStatus) parseStatus.textContent = "";
       const range = sel.getRangeAt(0).cloneRange();
       const rect = range.getBoundingClientRect();
       const section = sectionForElement(sel.anchorNode?.parentElement);
-      pendingSelection = { quote: selectedText, section, rect };
+      pendingSelection = { quote: selectedText, section, rect, range };
       selPopover.classList.remove("visible");
       positionSelectionAction(rect);
       selAction.classList.add("visible");
