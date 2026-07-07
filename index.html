@@ -2226,6 +2226,17 @@ function renderAll(rebuildChips = true) {
   renderRaterChart(rows);
 }
 
+function formatDataTimestamp(date) {
+  return date.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
 function loadRecords(records, errors, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status");
   const sourceStatus = document.getElementById("source-status");
@@ -2254,11 +2265,12 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   const excluded = records.length - DATA.length;
   const last = DATA.map(r => r.receivedAt).filter(Boolean).sort().pop();
   const lastDate = last ? new Date(last) : null;
-  const lastLabel = lastDate ? lastDate.toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  const lastLabel = lastDate ? formatDataTimestamp(lastDate) : "";
+  const checkedLabel = options.checkedAt ? formatDataTimestamp(options.checkedAt) : "";
   const lastText = lastLabel ? ` · latest ${lastLabel}` : "";
   const message = `Loaded ${DATA.length} rows from ${sourceLabel}` + (excluded ? ` · ${excluded} excluded` : "") + (errors.length ? ` · ${errors.length} row(s) skipped` : "") + lastText;
   const sourceMessage = sourceLabel === "latest test data" ? (options.sourceMessage || "Up to date") : message;
-  if (updatedAt) updatedAt.textContent = lastLabel ? `Last updated ${lastLabel}` : "";
+  if (updatedAt) updatedAt.textContent = checkedLabel ? `Last checked ${checkedLabel}` : (lastLabel ? `Data through ${lastLabel}` : "");
   if (!options.silent && status) status.textContent = message;
   if (!options.silent && sourceStatus) {
     sourceStatus.textContent = sourceMessage;
@@ -2289,7 +2301,7 @@ async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const raw = await res.text();
     const saveStatus = res.headers.get("X-Dashboard-Data-Save") || "";
-    loadFeedbackJsonl(raw, sourceLabel, { ...options, sourceMessage: dataSaveMessage(saveStatus) });
+    loadFeedbackJsonl(raw, sourceLabel, { ...options, checkedAt: new Date(), sourceMessage: dataSaveMessage(saveStatus) });
     return true;
   } catch (error) {
     if (!options.silent && status) {
