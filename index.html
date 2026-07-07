@@ -654,6 +654,24 @@
     transform: translateX(-50%);
   }
   .sel-popover.visible { display: block; }
+  .sel-action {
+    position: fixed;
+    z-index: 99;
+    display: none;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid rgba(28,34,31,.18);
+    border-radius: 999px;
+    background: var(--ink);
+    color: #fff;
+    padding: 8px 12px;
+    font: 700 13px/1 'IBM Plex Sans', system-ui, sans-serif;
+    box-shadow: 0 8px 24px rgba(28,34,31,.22);
+    cursor: pointer;
+    transform: translateX(-50%);
+  }
+  .sel-action.visible { display: inline-flex; }
+  .sel-action svg { flex: 0 0 auto; }
   .sel-quote {
     max-height: 76px;
     overflow: hidden;
@@ -813,9 +831,14 @@
 
 <div class="cmnt-onboard" id="cmntOnboard">
   <h3>How to leave comments</h3>
-  <p>Select text to comment on a specific finding, or use Add comment for a general note. Comments are shared with everyone viewing this report.</p>
+  <p>Select text, then click Comment to annotate a specific finding. Use Add comment for a general note. Comments are shared with everyone viewing this report.</p>
   <button type="button" id="cmntOnboardDismiss">Got it</button>
 </div>
+
+<button class="sel-action" id="selAction" type="button" title="Comment on selected text">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span>Comment</span>
+</button>
 
 <div class="sel-popover" id="selPopover" role="tooltip">
   <div class="sel-quote" id="selQuote"></div>
@@ -2016,6 +2039,7 @@ if (parseStatus) parseStatus.textContent = "";
   const authorSave = document.getElementById("cmntAuthorSave");
   const onboard = document.getElementById("cmntOnboard");
   const onboardDismiss = document.getElementById("cmntOnboardDismiss");
+  const selAction = document.getElementById("selAction");
   const selPopover = document.getElementById("selPopover");
   const selQuote = document.getElementById("selQuote");
   const selNameInput = document.getElementById("selNameInput");
@@ -2284,11 +2308,22 @@ if (parseStatus) parseStatus.textContent = "";
   }
 
   function hideSelectionPopover() {
+    selAction.classList.remove("visible");
     selPopover.classList.remove("visible");
     selInput.value = "";
     selSend.disabled = true;
     pendingSelection = null;
     removeActiveHighlight();
+  }
+
+  function positionSelectionAction(rect) {
+    const width = 110;
+    let top = rect.top - 42;
+    if (top < 8) top = rect.bottom + 8;
+    let left = rect.left + rect.width / 2;
+    left = Math.max(width / 2 + 12, Math.min(window.innerWidth - width / 2 - 12, left));
+    selAction.style.top = `${top}px`;
+    selAction.style.left = `${left}px`;
   }
 
   function positionSelectionPopover(rect) {
@@ -2300,6 +2335,18 @@ if (parseStatus) parseStatus.textContent = "";
     left = Math.max(width / 2 + 12, Math.min(window.innerWidth - width / 2 - 12, left));
     selPopover.style.top = `${top}px`;
     selPopover.style.left = `${left}px`;
+  }
+
+  function openSelectionCommentPopover() {
+    if (!pendingSelection) return;
+    selAction.classList.remove("visible");
+    selQuote.textContent = pendingSelection.quote.length > 160 ? pendingSelection.quote.slice(0, 160) + "..." : pendingSelection.quote;
+    if (selNameInput) selNameInput.value = getAuthor();
+    positionSelectionPopover(pendingSelection.rect);
+    selPopover.classList.add("visible");
+    selInput.value = "";
+    selSend.disabled = true;
+    setTimeout(() => (getAuthor() ? selInput : selNameInput).focus(), 40);
   }
 
   function wrapSelection(range) {
@@ -2398,6 +2445,7 @@ if (parseStatus) parseStatus.textContent = "";
   fab.addEventListener("click", () => drawerOpen ? closeDrawer() : openDrawer(sectionFromViewport()));
   closeBtn.addEventListener("click", closeDrawer);
   overlay.addEventListener("click", closeDrawer);
+  selAction.addEventListener("click", openSelectionCommentPopover);
   submit.addEventListener("click", postGeneralComment);
   text.addEventListener("input", renderChrome);
   text.addEventListener("keydown", event => {
@@ -2439,18 +2487,14 @@ if (parseStatus) parseStatus.textContent = "";
     const section = sectionForElement(sel.anchorNode?.parentElement);
     wrapSelection(sel.getRangeAt(0));
     sel.removeAllRanges();
-    pendingSelection = { quote: selectedText, section };
-    selQuote.textContent = selectedText.length > 160 ? selectedText.slice(0, 160) + "..." : selectedText;
-    if (selNameInput) selNameInput.value = getAuthor();
-    positionSelectionPopover(rect);
-    selPopover.classList.add("visible");
-    selInput.value = "";
-    selSend.disabled = true;
-    setTimeout(() => (getAuthor() ? selInput : selNameInput).focus(), 40);
+    pendingSelection = { quote: selectedText, section, rect };
+    selPopover.classList.remove("visible");
+    positionSelectionAction(rect);
+    selAction.classList.add("visible");
   });
 
   document.addEventListener("mousedown", event => {
-    if (event.target.closest("#selPopover, .sel-active-highlight")) return;
+    if (event.target.closest("#selPopover, #selAction, .sel-active-highlight")) return;
     const highlightAtDown = activeHighlight;
     setTimeout(() => {
       const sel = window.getSelection();
