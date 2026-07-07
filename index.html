@@ -2494,7 +2494,6 @@ if (parseStatus) parseStatus.textContent = "";
     const renderReply = rawReply => {
       const reply = normalizeReply(rawReply);
       const replyLiked = reply.likedBy.includes(clientId);
-      const replyCount = replyCountDeep(reply.replies);
       const replyEditKey = `reply:${reply.id}`;
       const isEditingReply = activeEditKey === replyEditKey;
       const canEditReply = isMine(reply);
@@ -2514,7 +2513,7 @@ if (parseStatus) parseStatus.textContent = "";
             </div>
           ` : `<div class="cmnt-reply-text">${safe(reply.text)}</div>`}
           ${isEditingReply ? "" : `<div class="cmnt-reply-actions">
-            <button class="cmnt-action" type="button" data-reply-toggle="${safe(reply.id)}">Reply${replyCount ? ` · ${replyCount}` : ""}</button>
+            <button class="cmnt-action" type="button" data-reply-toggle="${safe(reply.id)}">Reply</button>
             ${canEditReply ? `<button class="cmnt-action" type="button" data-edit-start="${safe(replyEditKey)}">Edit</button>` : ""}
             <button class="cmnt-heart${replyLiked ? " liked" : ""}" type="button" data-reply-like="${safe(reply.id)}" title="${replyLiked ? "Unlike" : "Like"}" aria-label="${replyLiked ? "Unlike reply" : "Like reply"}">
               <span class="cmnt-heart-icon" aria-hidden="true">${replyLiked ? "♥" : "♡"}</span>${reply.likedBy.length ? `<span class="cmnt-heart-count">${reply.likedBy.length}</span>` : ""}
@@ -2527,7 +2526,6 @@ if (parseStatus) parseStatus.textContent = "";
     list.innerHTML = rows.map(rawComment => {
       const c = normalizeComment(rawComment);
       const liked = c.likedBy.includes(clientId);
-      const replyCount = replyCountDeep(c.replies);
       const commentEditKey = `comment:${c.id}`;
       const isEditingComment = activeEditKey === commentEditKey;
       const canEditComment = isMine(c);
@@ -2554,13 +2552,13 @@ if (parseStatus) parseStatus.textContent = "";
         ` : `<div class="cmnt-text">${safe(c.text)}</div>`}
         ${activeSection === null ? `<span class="cmnt-section">${safe(sectionLabel(c.section))}</span>` : ""}
         ${isEditingComment ? "" : `<div class="cmnt-actions">
-          <button class="cmnt-action" type="button" data-reply-toggle="${safe(c.id)}">Reply${replyCount ? ` · ${replyCount}` : ""}</button>
+          <button class="cmnt-action" type="button" data-reply-toggle="${safe(c.id)}">Reply</button>
           ${canEditComment ? `<button class="cmnt-action" type="button" data-edit-start="${safe(commentEditKey)}">Edit</button>` : ""}
           <button class="cmnt-heart${liked ? " liked" : ""}" type="button" data-like="${safe(c.id)}" title="${liked ? "Unlike" : "Like"}" aria-label="${liked ? "Unlike comment" : "Like comment"}">
             <span class="cmnt-heart-icon" aria-hidden="true">${liked ? "♥" : "♡"}</span>${c.likedBy.length ? `<span class="cmnt-heart-count">${c.likedBy.length}</span>` : ""}
           </button>
         </div>`}
-        ${replyCount ? `<div class="cmnt-replies">
+        ${c.replies.length ? `<div class="cmnt-replies">
           ${c.replies.map(renderReply).join("")}
         </div>` : ""}
         ${renderReplyComposer(c.id)}
