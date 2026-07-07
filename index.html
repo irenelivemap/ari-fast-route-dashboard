@@ -2271,10 +2271,12 @@ document.getElementById("detail-report").addEventListener("toggle", event => {
   }
 });
 
-loadRaw(RAW_DATA, "embedded data", { silent: true });
-loadExternalData({ silent: true });
 const parseStatus = document.getElementById("parse-status");
 if (parseStatus) parseStatus.textContent = "";
+loadExternalData({ silent: true }).then(loaded => {
+  if (!loaded) loadRaw(RAW_DATA, "embedded data", { silent: true });
+  if (parseStatus) parseStatus.textContent = "";
+});
 
 // ── Shared comment layer ─────────────────────────────────────
 (function() {
