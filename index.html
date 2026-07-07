@@ -3031,6 +3031,7 @@ if (parseStatus) parseStatus.textContent = "";
 
   function openSelectionCommentPopover() {
     if (!pendingSelection) return;
+    clearTimeout(selectionTimer);
     selAction.classList.remove("visible");
     if (pendingSelection.range) {
       wrapSelection(pendingSelection.range.cloneRange());
@@ -3145,7 +3146,11 @@ if (parseStatus) parseStatus.textContent = "";
   fab.addEventListener("click", () => drawerOpen ? closeDrawer() : openDrawer(sectionFromViewport()));
   closeBtn.addEventListener("click", closeDrawer);
   overlay.addEventListener("click", closeDrawer);
-  selAction.addEventListener("click", openSelectionCommentPopover);
+  selAction.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    openSelectionCommentPopover();
+  });
   submit.addEventListener("click", postGeneralComment);
   text.addEventListener("input", renderChrome);
   text.addEventListener("keydown", event => {
@@ -3183,12 +3188,12 @@ if (parseStatus) parseStatus.textContent = "";
   document.addEventListener("selectionchange", () => scheduleSelectionAction(90));
 
   document.addEventListener("mouseup", event => {
-    if (event.target.closest("#cmntDrawer, #selPopover, .cmnt-onboard")) return;
+    if (event.target.closest("#cmntDrawer, #selPopover, #selAction, .cmnt-onboard")) return;
     scheduleSelectionAction(40);
   });
 
   document.addEventListener("touchend", event => {
-    if (event.target.closest("#cmntDrawer, #selPopover, .cmnt-onboard")) return;
+    if (event.target.closest("#cmntDrawer, #selPopover, #selAction, .cmnt-onboard")) return;
     scheduleSelectionAction(120);
   });
 
