@@ -264,8 +264,10 @@
   .reason-rank-fill { height: 100%; border-radius: inherit; min-width: 3px; }
   .reason-rank-fill.ari { background: var(--livemap); }
   .reason-rank-fill.google { background: var(--google); }
+  .reason-rank-fill.neutral { background: #343B35; }
   .reason-rank-fill.ari.muted { background: #E6A8EA; }
   .reason-rank-fill.google.muted { background: #9BC0F4; }
+  .reason-rank-fill.neutral.muted { background: #A3A79E; }
   .reason-rank-fill.other {
     background: #F1F1EA;
     border: 1px dashed #565B56;
@@ -1998,6 +2000,26 @@ function pctReasonChart(id, boxId, counts, denom, color, big, useHighlights = tr
   });
 }
 
+function reasonRankingHtml(counts, denom, colorClass, emphasizedLabels = new Set()) {
+  const labels = REASONS.filter(x => counts[x])
+    .sort((a, b) => (counts[b] || 0) - (counts[a] || 0) || a.localeCompare(b));
+  if (!labels.length) return '<p class="sec-note">No losing-route reasons for this selection.</p>';
+  return `<div class="reason-rank">
+    ${labels.map(label => {
+      const raw = counts[label] || 0;
+      const pct = denom ? Math.round(raw / denom * 100) : 0;
+      const isEmphasized = emphasizedLabels.has(label);
+      const fillClass = label === "Other" ? "other" : colorClass;
+      return `
+        <div class="reason-rank-row">
+          <div class="reason-rank-label${isEmphasized ? " shared" : ""}">${esc(label)}</div>
+          <div class="reason-rank-track" aria-hidden="true"><div class="reason-rank-fill ${fillClass}${isEmphasized ? "" : " muted"}" style="width:${pct}%"></div></div>
+          <div class="reason-rank-value"><span class="reason-rank-base">${raw}/${denom}</span> · ${pct}%</div>
+        </div>`;
+    }).join("")}
+  </div>`;
+}
+
 function compareReasonCharts(boxId, ariCounts, googleCounts, ariDenom, googleDenom) {
   ["reasonsChart", "ariReasonsChart", "googleReasonsChart"].forEach(id => {
     if (charts[id]) { charts[id].destroy(); delete charts[id]; }
@@ -2008,35 +2030,16 @@ function compareReasonCharts(boxId, ariCounts, googleCounts, ariDenom, googleDen
     if (!(ariCounts[label] && googleCounts[label])) return false;
     return Math.max(pctFor(ariCounts, ariDenom, label), pctFor(googleCounts, googleDenom, label)) >= 15;
   }));
-  const rankingHtml = (counts, denom, colorClass) => {
-    const labels = REASONS.filter(x => counts[x])
-      .sort((a, b) => (counts[b] || 0) - (counts[a] || 0) || a.localeCompare(b));
-    if (!labels.length) return '<p class="sec-note">No losing-route reasons for this selection.</p>';
-    return `<div class="reason-rank">
-      ${labels.map(label => {
-        const raw = counts[label] || 0;
-        const pct = denom ? Math.round(raw / denom * 100) : 0;
-        const isShared = sharedTop.has(label);
-        const fillClass = label === "Other" ? "other" : colorClass;
-        return `
-          <div class="reason-rank-row">
-            <div class="reason-rank-label${isShared ? " shared" : ""}">${esc(label)}</div>
-            <div class="reason-rank-track" aria-hidden="true"><div class="reason-rank-fill ${fillClass}${isShared ? "" : " muted"}" style="width:${pct}%"></div></div>
-            <div class="reason-rank-value"><span class="reason-rank-base">${raw}/${denom}</span> · ${pct}%</div>
-          </div>`;
-      }).join("")}
-    </div>`;
-  };
   document.getElementById(boxId).removeAttribute("style");
   document.getElementById(boxId).innerHTML = `
     <div class="reason-compare-grid">
       <div class="reason-compare-panel">
         <h3>ARI lost</h3>
-        ${rankingHtml(ariCounts, ariDenom, "ari")}
+        ${reasonRankingHtml(ariCounts, ariDenom, "ari", sharedTop)}
       </div>
       <div class="reason-compare-panel">
         <h3>Google lost</h3>
-        ${rankingHtml(googleCounts, googleDenom, "google")}
+        ${reasonRankingHtml(googleCounts, googleDenom, "google", sharedTop)}
       </div>
     </div>`;
 }
@@ -2057,12 +2060,11 @@ function renderReasons(rows) {
     if (charts[id]) { charts[id].destroy(); delete charts[id]; }
   });
   const box = document.getElementById("reasons-box");
-  if (!document.getElementById("reasonsChart")) {
-    box.innerHTML = '<canvas id="reasonsChart" role="img" aria-label="Failure reasons across all losing routes"></canvas>';
-  }
   REASONS.forEach(x => { total[x] = (vsGoogle[x] || 0) + (vsLiveMap[x] || 0) + (bothPoor[x] || 0); });
   const denom = rows.filter(r => r.verdict !== "Both work well").length;
-  pctReasonChart("reasonsChart", "reasons-box", total, denom, NEUTRAL, true, true);
+  if (charts.reasonsChart) { charts.reasonsChart.destroy(); delete charts.reasonsChart; }
+  box.removeAttribute("style");
+  box.innerHTML = reasonRankingHtml(total, denom, "neutral", new Set(Object.keys(REASON_HIGHLIGHTS)));
 }
 
 function renderRaterChart(rows) {
