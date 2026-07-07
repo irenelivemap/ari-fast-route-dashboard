@@ -891,6 +891,8 @@
     gap: 6px;
     padding: 10px 12px 0;
   }
+  .sel-field[hidden],
+  .sel-author-summary[hidden] { display: none; }
   .sel-field label {
     color: rgba(255,255,255,.78);
     font-size: 12px;
@@ -914,6 +916,18 @@
     resize: vertical;
     line-height: 1.4;
   }
+  .sel-comment-field textarea {
+    min-height: 92px;
+    border-color: rgba(255,255,255,.38);
+    background: rgba(255,255,255,.13);
+  }
+  .sel-name-field {
+    padding-top: 8px;
+  }
+  .sel-name-field input {
+    padding: 7px 9px;
+    background: rgba(255,255,255,.08);
+  }
   .sel-field input:focus,
   .sel-field textarea:focus {
     border-color: rgba(255,255,255,.55);
@@ -924,6 +938,32 @@
   .sel-help {
     color: rgba(255,255,255,.62);
     font-size: 12px;
+  }
+  .sel-author-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 9px 12px 0;
+    padding: 8px 9px;
+    border-radius: 7px;
+    background: rgba(255,255,255,.07);
+    color: rgba(255,255,255,.68);
+    font-size: 12px;
+  }
+  .sel-author-summary strong {
+    color: #fff;
+    font-weight: 700;
+  }
+  .sel-author-summary button {
+    border: 0;
+    background: transparent;
+    color: #fff;
+    padding: 0;
+    font: 700 12px/1 'IBM Plex Sans', system-ui, sans-serif;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
   .sel-footer {
     display: flex;
@@ -1044,14 +1084,18 @@
 
 <div class="sel-popover" id="selPopover" role="tooltip">
   <div class="sel-quote" id="selQuote"></div>
-  <div class="sel-field">
-    <label for="selInput">Comment</label>
+  <div class="sel-field sel-comment-field">
+    <label for="selInput">Your comment</label>
     <textarea id="selInput" placeholder="Write your comment..." maxlength="500" autocomplete="off" rows="3"></textarea>
   </div>
-  <div class="sel-field">
+  <div class="sel-author-summary" id="selAuthorSummary" hidden>
+    <span>Posting as <strong id="selAuthorSavedName"></strong></span>
+    <button type="button" id="selAuthorChange">Change</button>
+  </div>
+  <div class="sel-field sel-name-field" id="selNameField">
     <label for="selNameInput">Your name</label>
     <input id="selNameInput" placeholder="Add your name..." maxlength="40" autocomplete="name">
-    <div class="sel-help">Saved for your next comments.</div>
+    <div class="sel-help">Only needed once. Saved for next time.</div>
   </div>
   <div class="sel-footer">
     <button type="button" id="selSend" disabled>Post</button>
@@ -2225,6 +2269,7 @@ if (parseStatus) parseStatus.textContent = "";
   let activeEditKey = null;
   let activeMenuKey = null;
   let selectionTimer = null;
+  let selectionNameEditing = false;
 
   const fab = document.getElementById("cmntFab");
   const fabLabel = document.getElementById("cmntFabLabel");
@@ -2251,6 +2296,10 @@ if (parseStatus) parseStatus.textContent = "";
   const selPopover = document.getElementById("selPopover");
   const selQuote = document.getElementById("selQuote");
   const selNameInput = document.getElementById("selNameInput");
+  const selNameField = document.getElementById("selNameField");
+  const selAuthorSummary = document.getElementById("selAuthorSummary");
+  const selAuthorSavedName = document.getElementById("selAuthorSavedName");
+  const selAuthorChange = document.getElementById("selAuthorChange");
   const selInput = document.getElementById("selInput");
   const selSend = document.getElementById("selSend");
 
@@ -2952,6 +3001,7 @@ if (parseStatus) parseStatus.textContent = "";
     selPopover.classList.remove("visible");
     selInput.value = "";
     selSend.disabled = true;
+    selectionNameEditing = false;
     pendingSelection = null;
     removeActiveHighlight();
   }
@@ -3039,8 +3089,13 @@ if (parseStatus) parseStatus.textContent = "";
   }
 
   function renderSelectionComposer() {
+    const savedName = getAuthor().trim();
+    const editingName = selectionNameEditing || !savedName;
     const hasComment = !!selInput.value.trim();
-    const hasName = !selNameInput || !!selNameInput.value.trim();
+    const hasName = editingName ? !!selNameInput.value.trim() : !!savedName;
+    if (selNameField) selNameField.hidden = !editingName;
+    if (selAuthorSummary) selAuthorSummary.hidden = editingName;
+    if (selAuthorSavedName) selAuthorSavedName.textContent = savedName;
     selSend.disabled = !(hasComment && hasName);
   }
 
@@ -3084,7 +3139,7 @@ if (parseStatus) parseStatus.textContent = "";
 
   function positionSelectionPopover(rect) {
     const width = Math.min(320, window.innerWidth - 24);
-    const height = 320;
+    const height = selPopover.offsetHeight || 320;
     let top = rect.top - height - 8;
     if (top < 8) top = rect.bottom + 8;
     let left = rect.left + rect.width / 2;
@@ -3103,11 +3158,12 @@ if (parseStatus) parseStatus.textContent = "";
       if (sel) sel.removeAllRanges();
     }
     selQuote.textContent = pendingSelection.quote.length > 160 ? pendingSelection.quote.slice(0, 160) + "..." : pendingSelection.quote;
-    if (selNameInput) selNameInput.value = getAuthor();
-    positionSelectionPopover(pendingSelection.rect);
-    selPopover.classList.add("visible");
     selInput.value = "";
+    selectionNameEditing = !getAuthor().trim();
+    if (selNameInput) selNameInput.value = getAuthor();
+    selPopover.classList.add("visible");
     renderSelectionComposer();
+    positionSelectionPopover(pendingSelection.rect);
     setTimeout(() => selInput.focus(), 40);
   }
 
@@ -3128,8 +3184,9 @@ if (parseStatus) parseStatus.textContent = "";
   function postSelectionComment() {
     const body = selInput.value.trim();
     if (!body || !pendingSelection) return;
-    const typedName = selNameInput ? selNameInput.value.trim() : "";
+    const typedName = selectionNameEditing ? (selNameInput ? selNameInput.value.trim() : "") : getAuthor().trim();
     if (!typedName) {
+      selectionNameEditing = true;
       renderSelectionComposer();
       selNameInput?.focus();
       return;
@@ -3286,6 +3343,18 @@ if (parseStatus) parseStatus.textContent = "";
     if (event.key === "Escape") hideSelectionPopover();
   });
   selSend.addEventListener("click", postSelectionComment);
+  if (selAuthorChange) {
+    selAuthorChange.addEventListener("click", event => {
+      event.preventDefault();
+      selectionNameEditing = true;
+      if (selNameInput) selNameInput.value = getAuthor();
+      renderSelectionComposer();
+      setTimeout(() => {
+        selNameInput?.focus();
+        selNameInput?.select();
+      }, 30);
+    });
+  }
   if (selNameInput) {
     selNameInput.addEventListener("keydown", event => {
       if (event.key === "Enter") {
