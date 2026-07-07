@@ -1180,7 +1180,7 @@
 <script>
 const VERDICTS = ["LiveMap", "Google", "Both work well", "Both work poorly"];
 const VERDICT_ALIASES = { "ARI": "LiveMap" };
-const RATER_ALIASES = { "Christian Reinhold": "Christian", "Philipe Fatio": "Philipe", "martijn": "Martijn" };
+const RATER_ALIASES = { "martijn": "Martijn" };
 const EXCLUDED_RATERS = new Set([]);
 const REASONS = ["Misses shortcut", "Unclear shortcut", "Longer distance", "Longer time", "More turns", "Crossing friction", "More elevation", "More stairs", "Other"];
 const EXTERNAL_DATA_URL = "data/feedback.jsonl";
@@ -1246,6 +1246,12 @@ function dotHtml(v) {
 
 function normalizeVerdict(v) {
   return VERDICT_ALIASES[v] || v;
+}
+
+function normalizeRaterName(name) {
+  const normalized = (name || "").trim().replace(/\s+/g, " ");
+  const aliased = RATER_ALIASES[normalized] || RATER_ALIASES[normalized.toLowerCase()] || normalized;
+  return aliased.split(" ")[0] || "anonymous";
 }
 
 function verdictLabel(v) {
@@ -2197,7 +2203,7 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
     return;
   }
   DATA = records
-    .map(r => ({ ...r, rater: RATER_ALIASES[r.rater] || r.rater }))
+    .map(r => ({ ...r, rater: normalizeRaterName(r.rater) }))
     .filter(r => !EXCLUDED_RATERS.has(r.rater))
     .map((r, i) => ({ ...r, id: i }));
   activeRater = "All";
