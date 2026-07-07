@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast mode, on foot · ARI vs Google</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FAFAF6;
+    --card: #FFFFFF;
+    --ink: #1C221F;
+    --ink-2: #49514B;
+    --ink-3: #626B65;
+    --line: #D8D6CC;
+    --livemap: #A21CAF;
+    --livemap-soft: #F8E4FA;
+    --google: #2266CC;
+    --google-soft: #E3EDFB;
+    --tie-good: #31763F;
+    --tie-good-soft: #EAF2EA;
+    --tie-poor: #C1392B;
+    --tie-poor-soft: #F7E9E7;
+    --neutral: #555D57;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; scrollbar-gutter: stable; overflow-y: scroll; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 46px 28px 88px; }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  header .eyebrow { color: var(--livemap); }
+  h1 .accent { color: var(--livemap); }
+  h1 {
+    font-weight: 700;
+    font-size: clamp(34px, 4.5vw, 52px);
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+    margin: 10px 0 8px;
+  }
+  .sub { color: var(--ink-2); }
+  .study-context {
+    margin-top: 14px;
+    max-width: 86ch;
+    color: var(--ink-3);
+    font-size: 15px;
+  }
+  .study-context strong { color: var(--ink-2); font-weight: 600; }
+  .path-divider {
+    border: none;
+    border-top: 3px dotted var(--ink-3);
+    opacity: 0.55;
+    margin: 32px 0;
+    position: relative;
+  }
+  section { margin-top: 8px; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+  h2 {
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -0.01em;
+  }
+  .sec-note { font-size: 15px; color: var(--ink-2); margin-bottom: 22px; }
+
+  .report-filter {
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .filter-label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 10px;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .filter-label span {
+    color: var(--ink-3);
+    font-weight: 400;
+    font-size: 15px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+  .chip {
+    font-size: 15px;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: var(--card); color: var(--ink-2);
+    padding: 7px 16px; cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  .chip:hover { border-color: var(--ink-3); }
+  .chip:focus-visible { outline: 2px solid var(--livemap); outline-offset: 2px; }
+  .chip.on { border-color: var(--ink); color: var(--ink); background: var(--ink); color: #fff; }
+
+  .overview { margin-top: 20px; }
+  .kpi {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 24px;
+  }
+  .kpi .label { font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  .kpi .value { font-weight: 700; font-size: 66px; letter-spacing: -0.03em; line-height: 1; margin-top: 10px; }
+  .kpi .hint { font-size: 16px; color: var(--ink-2); margin-top: 12px; max-width: 72ch; }
+  .kpi.hero { border-left: 4px solid var(--livemap); border-radius: 0 14px 14px 0; background: linear-gradient(90deg, var(--livemap-soft) 0, var(--card) 120px); }
+  .kpi.hero .value { color: var(--livemap); }
+  .summary-grid { display: grid; grid-template-columns: minmax(220px, 290px) 1fr; gap: 24px; align-items: center; }
+  .summary-strip { display: grid; gap: 13px; }
+  .summary-row { display: grid; grid-template-columns: 120px 1fr minmax(92px, auto); gap: 14px; align-items: center; color: var(--ink-2); font-size: 15px; }
+  .summary-track { height: 12px; border-radius: 999px; background: #EFF0EA; overflow: hidden; }
+  .summary-fill { height: 100%; border-radius: inherit; }
+  .summary-fill.livemap { background: var(--livemap); }
+  .summary-fill.google { background: var(--google); }
+  .summary-fill.tie { background: #A9AEA7; }
+  .summary-row b { color: var(--ink); font-weight: 600; }
+  .summary-base { color: #8A918A; font-weight: 500; }
+  @media (max-width: 760px) { .summary-grid { grid-template-columns: 1fr; } .kpi .value { font-size: 52px; } }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 7px; vertical-align: 1px; }
+
+  .priority-summary {
+    margin-top: 18px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 24px;
+  }
+  .priority-summary h2 { font-size: 22px; margin-bottom: 8px; }
+  .priority-summary p { color: var(--ink-2); max-width: 112ch; font-size: 16px; }
+  .priority-list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .priority-item {
+    border-top: 2px solid var(--ink);
+    padding-top: 10px;
+    color: var(--ink-2);
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  .priority-item.featured { border-top-color: var(--livemap); }
+  .priority-item strong {
+    display: block;
+    color: var(--ink);
+    font-size: 15.5px;
+    margin-bottom: 3px;
+  }
+  .priority-item.featured strong::before {
+    content: "★";
+    color: var(--livemap);
+    margin-right: 6px;
+    font-size: 15px;
+  }
+  @media (max-width: 900px) { .priority-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .priority-list { grid-template-columns: 1fr; } }
+
+  .report-details {
+    margin-top: 34px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--card);
+  }
+  .report-details > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 18px 22px;
+    font-weight: 600;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .report-details > summary::-webkit-details-marker { display: none; }
+  .report-details > summary::after {
+    content: "Expand";
+    color: var(--ink-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .report-details[open] > summary::after { content: "Collapse"; }
+  .report-body {
+    border-top: 1px solid var(--line);
+    padding: 20px 22px 24px;
+  }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 24px; margin-top: 16px;
+  }
+  .report-body .card {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 10px 0 0;
+    margin-top: 10px;
+  }
+  .chart-legend {
+    display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px 18px;
+    margin-bottom: 16px; color: var(--ink-2); font-size: 14px;
+  }
+  .single-rater .chart-legend { justify-content: flex-start; margin-bottom: 8px; }
+  .chart-legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend-swatch { width: 26px; height: 12px; border-radius: 999px; display: inline-block; }
+  .legend-swatch.livemap { background: var(--livemap); border: 1px solid var(--livemap); }
+  .legend-swatch.google { background: var(--google); border: 1px solid var(--google); }
+  .legend-swatch.tie-good { background: var(--tie-good-soft); border: 1px dashed var(--tie-good); }
+  .legend-swatch.tie-poor { background: var(--tie-poor-soft); border: 1px dashed var(--tie-poor); }
+  .chart-box { position: relative; width: 100%; }
+  .comment { border-top: 1px dotted var(--line); padding: 14px 2px; }
+  .comment:first-of-type { border-top: none; }
+  .comment .who { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: var(--ink-3); margin-bottom: 5px; }
+  .tag { border-radius: 999px; padding: 3px 12px; font-size: 14px; }
+  .comment p { color: var(--ink); font-size: 16px; max-width: 90ch; }
+  .comment .reasons { font-size: 14px; color: var(--ink-3); margin-top: 4px; }
+  .theme-list { display: grid; gap: 10px; }
+  .theme-item { display: grid; gap: 0; }
+  .theme-row {
+    width: 100%; display: grid; grid-template-columns: minmax(180px, 240px) 1fr auto; gap: 18px; align-items: center;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: inherit;
+    padding: 16px 18px; text-align: left; font: inherit; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .theme-toggle {
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; white-space: nowrap;
+    color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .theme-row:hover .theme-toggle { color: var(--ink); border-color: var(--ink-3); background: #F6F6F0; }
+  .theme-row.on .theme-toggle { color: var(--ink); border-color: var(--ink-3); background: #F1F1EA; }
+  @media (max-width: 700px) { .theme-row { grid-template-columns: 1fr; gap: 8px; } .theme-toggle { justify-self: start; } }
+  .theme-row:hover { border-color: var(--ink-3); }
+  .theme-row:focus-visible { outline: 2px solid var(--livemap); outline-offset: 2px; }
+  .theme-row.on {
+    border-color: var(--livemap); border-bottom-color: var(--line);
+    border-radius: 10px 10px 0 0; background: #F8F5FE;
+  }
+  .theme-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-weight: 600; }
+  .theme-title span { color: var(--ink-3); font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .theme-bar { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 8px; }
+  .theme-fill { height: 100%; border-radius: inherit; background: #565B56; }
+  .theme-item.covered { margin-top: 14px; }
+  .theme-item.covered .theme-row { border: 1.5px dashed var(--line); background: #F8F8F2; }
+  .theme-item.covered .theme-fill { background: #A9AEA7; }
+  .theme-item.covered .theme-title { color: var(--ink-2); }
+  .theme-description { color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+  .theme-comments {
+    border: 1px solid var(--line); border-top: none; border-radius: 0 0 10px 10px;
+    background: #fff; padding: 0 16px 2px; margin: -1px 0 8px;
+  }
+  .theme-comments .comment:first-of-type { border-top: none; }
+  @media (max-width: 720px) { .theme-row { grid-template-columns: 1fr; gap: 10px; } }
+
+  details.updater { margin-top: 16px; border: 1px dashed var(--ink-3); border-radius: 14px; background: var(--card); }
+  details.updater summary {
+    cursor: pointer; padding: 18px 24px; font-weight: 600; font-size: 17px;
+    list-style: none; display: flex; align-items: center; gap: 10px;
+  }
+  details.updater summary::-webkit-details-marker { display: none; }
+  details.updater summary::before { content: "↻"; color: var(--livemap); font-weight: 700; }
+  .updater-body { padding: 0 22px 22px; }
+  .updater-body p { font-size: 15px; color: var(--ink-2); max-width: 80ch; margin-bottom: 14px; }
+  textarea {
+    width: 100%; min-height: 180px; resize: vertical;
+    font-family: inherit; font-size: 14px; line-height: 1.5;
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; color: var(--ink); background: var(--paper);
+  }
+  textarea:focus-visible { outline: 2px solid var(--livemap); outline-offset: 1px; }
+  textarea::placeholder { color: var(--ink-3); opacity: 1; }
+  .btn-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  button.btn {
+    font-family: inherit; font-size: 15.5px; font-weight: 500;
+    border: 1px solid var(--ink); background: var(--ink); color: #fff;
+    border-radius: 999px; padding: 8px 20px; cursor: pointer;
+  }
+  button.btn.ghost { background: transparent; color: var(--ink); }
+  button.btn:focus-visible { outline: 2px solid var(--livemap); outline-offset: 2px; }
+  #parse-status { font-size: 14px; color: var(--ink-2); }
+  #parse-status.err { color: var(--tie-poor); }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>When routes diverge, whose wins?</h1>
+    <p class="sub" id="study-context"></p>
+  </header>
+
+  <div class="overview">
+    <div id="kpis"></div>
+  </div>
+
+  <section class="priority-summary" id="priority-summary">
+    <h2>What to prioritize next</h2>
+    <p>ARI Fast is broadly competitive with Google, so the next wins are about making fast routes feel more direct, easier to follow, and better to walk when similarly fast alternatives exist.</p>
+    <div class="priority-list">
+      <div class="priority-item"><strong>Fix missed shortcuts</strong>Catch obvious cut-throughs, pedestrian paths, parks, bridges, and local shortcuts.</div>
+      <div class="priority-item"><strong>Simplify the route</strong>Avoid unnecessary detours and too many turns when speed is similar.</div>
+      <div class="priority-item"><strong>Avoid busy streets</strong>Use calmer fast alternatives when available.</div>
+      <div class="priority-item featured"><strong>Prefer nicer fast paths</strong>Favor river, lake, park, or pedestrian routes when time is comparable.</div>
+    </div>
+  </section>
+
+  <details class="report-details" id="detail-report">
+    <summary>Detailed report</summary>
+    <div class="report-body">
+      <div class="report-filter">
+        <div class="filter-label">Filter charts and comments themes below</div>
+        <div class="chips" id="rater-chips" role="group" aria-label="Filter charts and comments themes below by rater"></div>
+      </div>
+
+      <section id="rater-chart-section">
+        <div class="sec-head"><h2>Verdicts by rater</h2></div>
+        <p class="sec-note">Each bar is that rater's verdict mix, sorted by how many comparisons they rated. The number in parentheses is their comparison count.</p>
+        <div class="card">
+          <div class="chart-legend" aria-label="Verdict legend">
+            <span><i class="legend-swatch livemap" aria-hidden="true"></i>ARI</span>
+            <span><i class="legend-swatch google" aria-hidden="true"></i>Google</span>
+            <span><i class="legend-swatch tie-good" aria-hidden="true"></i>Both work well</span>
+            <span><i class="legend-swatch tie-poor" aria-hidden="true"></i>Both work poorly</span>
+          </div>
+          <div class="chart-box" id="rater-box"><canvas id="raterChart" role="img" aria-label="Verdicts per rater"></canvas></div>
+        </div>
+      </section>
+
+      <hr class="path-divider" id="detail-rater-divider">
+
+      <section id="reasons-section">
+        <div class="sec-head"><h2>Why the losing route lost</h2></div>
+        <p class="sec-note">Shown across all losing routes because the sample is small. When we looked only at cases where ARI did worse (Google won or both routes worked poorly), the same pattern still appeared.</p>
+        <div class="card">
+          <div class="chart-box" id="reasons-box"><canvas id="reasonsChart" role="img" aria-label="Failure reasons across all losing routes"></canvas></div>
+        </div>
+      </section>
+
+      <hr class="path-divider">
+
+      <section>
+        <div class="sec-head"><h2>What free text adds</h2></div>
+        <p class="sec-note">Qualitative signals that are not already captured by the structured reason taxonomy above.</p>
+        <div class="card" id="comment-themes"></div>
+      </section>
+
+      <hr class="path-divider">
+
+      <section>
+        <div class="sec-head"><h2>Update the data</h2></div>
+        <details class="updater">
+          <summary>Paste a new export to refresh every chart</summary>
+          <div class="updater-body">
+            <p>Paste the raw export below in the same format as the rating tool (rows containing rater, verdict, overlap %, reason lines, optional comment, ending with "Delete"). Tabs or line breaks between fields both work. To make new data permanent, open this file in a text editor and replace the text between <span>RAW_DATA = `</span> and the closing backtick with your new export.</p>
+            <textarea id="paste-area" placeholder="Kristin	ARI	81%&#10;Crossing friction&#10;Delete&#10;..." aria-label="Paste raw export"></textarea>
+            <div class="btn-row">
+              <button class="btn" id="btn-load">Load pasted data</button>
+              <button class="btn ghost" id="btn-reset">Restore embedded data</button>
+              <span id="parse-status"></span>
+            </div>
+          </div>
+        </details>
+      </section>
+    </div>
+  </details>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const VERDICTS = ["LiveMap", "Google", "Both work well", "Both work poorly"];
+const VERDICT_ALIASES = { "ARI": "LiveMap" };
+const REASONS = ["Misses shortcut", "Unclear shortcut", "Longer distance", "Longer time", "More turns", "Crossing friction", "More elevation", "More stairs", "Other"];
+const COMMENT_THEMES = [
+  { name: "Too busy", description: "The route loses appeal when it passes through traffic, crowded corridors, tourist-heavy streets, or busy roads instead of calmer alternatives.", terms: ["busy street", "busy streets", "busy road", "busy roads", "too busy", "busier", "less busy", "calmer", "alongside busy", "less alongside busy", "traffic", "big road", "big roads", "main road", "main roads", "big street", "big streets", "main street", "main streets", "cars", "tram", "hardbrücke", "sihlquai", "crowded", "crowding", "tourists", "christmas market", "off season"], excludeTerms: ["lot of turns", "afraid to miss", "right street"] },
+  { name: "Less pleasant", description: "The route loses when the alternative offers a nicer walk, such as river or lake paths, parks, more beautiful streets, or better surroundings.", terms: ["nice", "nicer", "scenic"], contextualTerms: ["river", "lake", "park", "parks"], context: ["nice", "nicer", "prefer", "preferred", "would take", "definitely"] },
+  { name: "Weather or time of day", description: "The route only works well under certain conditions, such as dry weather, daylight, or well-lit streets at night.", terms: ["weather", "mud", "rain", "night", "day", "lights", "lighting"] },
+  { name: "Lack of amenities", description: "The route is less attractive when the alternative has useful places along the way, such as coffee, shops, restaurants, bars, kiosks, or groceries.", terms: ["coffee", "coffe", "shop", "shops", "restaurant", "restaurants", "beer", "bar", "bars", "kiosk", "supermarket", "starbucks"] }
+];
+const COLORS = {
+  "LiveMap": "#A21CAF",
+  "Google": "#2266CC",
+  "Both work well": "#31763F",
+  "Both work poorly": "#C1392B"
+};
+const NEUTRAL = "#A3A79E";
+const REASON_HIGHLIGHTS = {
+  "Misses shortcut": "#343B35",
+  "Longer distance": "#343B35",
+  "More turns": "#343B35",
+  "Other": "#343B35"
+};
+const MUTED = new Set(["Both work well", "Both work poorly"]);
+const SOFT = {
+  "LiveMap": "#F8E4FA",
+  "Google": "#E3EDFB",
+  "Both work well": "#E4EFE1",
+  "Both work poorly": "#F8E3DC"
+};
+const TEXT_ON_SOFT = {
+  "LiveMap": "#86198F",
+  "Google": "#1D4F99",
+  "Both work well": "#3C5F3B",
+  "Both work poorly": "#79463C"
+};
+const MUTED_BORDER = {
+  "Both work well": "#6E9A6E",
+  "Both work poorly": "#C6836F"
+};
+const SOLID_BORDER = {
+  "LiveMap": "#7B1284",
+  "Google": "#17509F"
+};
+
+function dotHtml(v) {
+  if (MUTED.has(v)) {
+    return `<span class="dot" style="background:${SOFT[v]};border:1px dashed ${MUTED_BORDER[v]}"></span>`;
+  }
+  return `<span class="dot" style="background:${COLORS[v]}"></span>`;
+}
+
+function normalizeVerdict(v) {
+  return VERDICT_ALIASES[v] || v;
+}
+
+function verdictLabel(v) {
+  return v === "LiveMap" ? "ARI" : v;
+}
+
+const RAW_DATA = `Kristin	LiveMap	81%
+Crossing friction
+Delete
+Olivier	Both work well	90%
+Delete
+Olivier	Google	87%
+Unclear shortcut
+goes through a building
+Delete
+Olivier	Google	69%
+Unclear shortcut
+Delete
+Kristin	Both work poorly	79%
+Crossing friction
+Route could take into account walking alongside the limit even longer (at the limmat side of Nude and then take the stairs to get up to Dammweg). Route B alongside Limmat is only nice when it's not super crowded
+Delete
+Olivier	Both work well	100%
+Delete
+Olivier	LiveMap	18%
+Other
+follows a big road
+Delete
+Olivier	Google	50%
+Longer distance
+Delete
+Olivier	LiveMap	92%
+Unclear shortcut
+Delete
+Kristin	LiveMap	36%
+Crossing friction
+Route B is only an option when it's off season because walking through Niederdorf eg at Christmas market time or when there's a lot of tourists is hell (and then the other route is crowded too but at least wider pavement)
+Delete
+Olivier	LiveMap	56%
+Longer distance
+Delete
+Olivier	LiveMap	68%
+Longer distance
+Delete
+Olivier	LiveMap	78%
+Unclear shortcut
+Delete
+Kristin	LiveMap	6%
+More turns
+Unclear shortcut
+I like walking along Josefstrasse better because there's more shops / restaurants to look at :D
+Delete
+Kristin	Both work poorly	26%
+Longer distance
+More elevation
+If you know this route, I'd prefer B (because it's less alongside busy streets), otherwise take the bus :D
+Delete
+Kristin	LiveMap	83%
+Crossing friction
+Delete
+Kristin	Google	95%
+More turns
+Route A seems to be walking on the Viadukt for longer time, which is nice and seems to be faster than taking the street
+Delete
+Kristin	Google	69%
+More turns
+Crossing friction
+Delete
+Kristin	Google	60%
+More turns
+Also much nicer to walk along the less busy route B!
+Delete
+Kristin	Both work poorly	28%
+Other
+More walking next to big roads in Route A (and maybe longer distance), but Route B has a lot of turns where I'd be afraid to miss the right street to continue walking alongside
+Delete
+Irene	LiveMap	80%
+Other
+I'd rather take Route A because it's nicer (along the river), but the mud can make it a hassle depending on the weather. Route B is the safer bet since we know it's always going to work
+Delete
+Irene	LiveMap	37%
+More turns
+Delete
+Irene	Google	33%
+Other
+Too busy
+Delete
+Christian	LiveMap	25%
+Other
+Don't know the area and looking by the shake it somehow feels that B is longer and might have less shadow areas than the inbetween streets in route A
+Delete
+Christian	Both work well	89%
+Delete
+Christian	Both work well	63%
+I need coffee in the mornings so even in fast routes I would choose paths with a coffe shop and stop for 5 minutes or to by something quick in a kiosk, or the meal for the evening on a supermarket (e.g. B. route)
+Delete
+Christian	Both work well	95%
+on A you see the starbucks, some people might stop for a coffee, but both work well
+Delete
+Christian	LiveMap	62%
+More stairs
+not a fan of stairs
+Delete
+Christian	Google	75%
+Other
+Fast route is similar but offers most scenic views
+Delete
+Christian	Both work well	100%
+Delete
+Christian	LiveMap	48%
+More turns
+on a first time in the area I route A looks more complicated
+Delete
+Christian	Both work well	29%
+B is more lively, A has some beer places but for fast both work best
+Delete
+Christian	Both work well	54%
+A woks best at day (inside a park) and B at night (street with lights)
+Delete
+Irene	Both work well	100%
+Delete
+Irene	Both work well	95%
+Delete
+Irene	Google	52%
+Other
+Nicer without sacrificing speed
+Delete
+Irene	Both work well	82%
+Delete
+Irene	Google	48%
+Misses shortcut
+It's nicer without sacrificing speed (although for the last part along Seefeldstrasse, I would take the slightly longer route along the lake).
+Delete
+Irene	LiveMap	100%
+Misses shortcut
+Delete
+Irene	Both work poorly	42%
+Other
+I think we can take a nicer route along the river without sacrificing speed
+Delete
+Irene	LiveMap	47%
+Misses shortcut
+it takes a busier street without being faster
+Delete
+Irene	LiveMap	73%
+Misses shortcut
+Delete
+Olivier	LiveMap	64%
+Unclear shortcut
+Delete
+Olivier	LiveMap	2%
+Longer distance
+but i would actually walk the orange one, because the blue one goes over one of the busiest rioad in europe (Hardbrücke)
+Delete
+Olivier	Google	94%
+Unclear shortcut
+Delete
+Olivier	Google	58%
+Longer distance
+Delete
+Olivier	Both work well	99%
+Delete
+Olivier	LiveMap	60%
+Longer distance
+blues feels like a shorter option and avoids the big street. with tram and cars
+Delete
+Olivier	Both work well	100%
+Delete
+Olivier	LiveMap	48%
+Other
+feels like a detour without obvious reason
+Delete
+Olivier	LiveMap	19%
+Other
+the blue one A goes along silhquai, with a lot of traffic
+Delete
+Olivier	Both work well	77%
+Crossing friction
+Delete
+Philipe	Both work poorly	98%
+Longer distance
+Both missed the opportunity to go along the lake. Route B does that a bit more around the middle of the route.
+Delete
+Philipe	LiveMap	15%
+Longer time
+Longer distance
+Misses shortcut
+Route A takes the pedestrian bridge across the river.
+Delete
+Philipe	Google	21%
+Misses shortcut
+Route A takes the pedestrian bridge across the train tracks.
+Delete
+Philipe	Both work well	15%
+Delete
+Philipe	Both work poorly	40%
+Misses shortcut
+Both miss the shortcut across the Schindlergut park.
+Delete
+Philipe	LiveMap	19%
+Longer time
+Longer distance
+Route A also crosses the main train station underground.
+Delete
+Philipe	LiveMap	85%
+Misses shortcut
+Delete
+Philipe	Both work poorly	100%
+Misses shortcut
+Both miss to go via the parks Merkurpark and Artergut.
+Delete
+Philipe	Both work well	48%
+Delete
+Philipe	LiveMap	24%
+Longer time
+Longer distance
+Route B is what I walk from home to the office.
+Delete
+Philipe	Both work well	71%
+Delete
+Philipe	LiveMap	83%
+Misses shortcut
+Delete
+Philipe	Both work well	93%
+Delete
+Philipe	Both work well	46%
+Delete
+Philipe	Both work well	74%
+Delete
+Philipe	Both work poorly	57%
+Other
+Both miss the pedestrian path along the river (Kloster-Fahr-Weg, alternatively the slightly shorter Fischerweg on the other side of the river), which I would definitely prefer.
+Delete
+Philipe	Both work well	71%
+Delete
+Philipe	Both work well	50%
+Delete
+Philipe	Google	95%
+Longer distance
+Misses shortcut
+Route A takes some little streets close to Schaffhauserplatz while Route A takes a detour all the way via Schaffhauserplatz. Otherwise identical.
+Delete
+Philipe	LiveMap	81%
+Crossing friction
+Route B takes the simpler path across the big roundabout at Letzigraben.
+Delete
+Philipe	LiveMap	92%
+Misses shortcut
+Route A takes a shortcut across Helvetiaplatz, which makes total sense. Other than that they're virtually identical.
+Delete
+Philipe	Both work well	61%
+Route A is calmer, but crosses a small hill. Route B is along busy roads. I might take both, depending on my mood.
+Delete
+Simon	Google	73%
+More turns
+Delete
+Simon	Both work well	94%
+Delete
+Simon	Google	11%
+More turns
+Delete
+Simon	Both work well	71%
+Delete
+Simon	LiveMap	98%
+More turns
+Delete
+Simon	LiveMap	40%
+More elevation
+Delete
+Simon	Google	43%
+Misses shortcut
+Delete
+Simon	Google	86%
+Misses shortcut
+Delete
+Simon	Both work well	100%
+Delete
+Simon	LiveMap	94%
+Unclear shortcut
+Delete`;
+
+function parseData(raw) {
+  const lines = raw.split(/\r?\n/);
+  const records = [];
+  let cells = [];
+  const errors = [];
+  const flush = () => {
+    if (!cells.length) return;
+    const tokens = cells.map(c => c.trim()).filter(c => c && c !== "Delete");
+    if (!tokens.length) { cells = []; return; }
+    if (tokens.join(" ").toLowerCase().startsWith("rater")) { cells = []; return; }
+    const rec = { rater: null, verdict: null, overlap: null, reasons: [], comment: [] };
+    tokens.forEach((t, i) => {
+      const normalizedVerdict = normalizeVerdict(t);
+      if (rec.verdict === null && VERDICTS.includes(normalizedVerdict)) {
+        rec.verdict = normalizedVerdict;
+        if (i > 0 && rec.rater === null) rec.rater = tokens[i - 1];
+        return;
+      }
+      if (rec.overlap === null && /^\d{1,3}\s?%$/.test(t)) { rec.overlap = parseInt(t, 10); return; }
+      if (REASONS.includes(t)) { rec.reasons.push(t); return; }
+      if (rec.rater !== null && t === rec.rater) return;
+      if (rec.verdict === null && rec.rater === null) { rec.rater = t; return; }
+      rec.comment.push(t);
+    });
+    rec.comment = rec.comment.join(" ").trim();
+    if (rec.verdict && rec.overlap !== null && rec.rater) {
+      records.push(rec);
+    } else {
+      errors.push(tokens.join(" | ").slice(0, 80));
+    }
+    cells = [];
+  };
+  for (const line of lines) {
+    const parts = line.split("\t");
+    for (const p of parts) cells.push(p);
+    if (parts.some(p => p.trim() === "Delete")) flush();
+  }
+  flush();
+  return { records, errors };
+}
+
+let DATA = [];
+let activeRater = "All";
+let activeCommentTheme = null;
+
+const COVERED_NAME = "Already covered by the reasons chart";
+const FIXED_THEME_ASSIGNMENTS = {
+  "more walking next to big roads": "Too busy",
+  "less shadow areas": "Weather or time of day",
+  "missed the opportunity to go along the lake": "Less pleasant",
+  "miss to go via the parks": "Less pleasant"
+};
+function fixedAssignment(record) {
+  const text = record.comment.toLowerCase();
+  for (const [fragment, theme] of Object.entries(FIXED_THEME_ASSIGNMENTS)) {
+    if (text.includes(fragment)) return theme;
+  }
+  return null;
+}
+let charts = {};
+
+function fmtPct(x) { return Math.round(x) + "%"; }
+
+function subset() {
+  return activeRater === "All" ? DATA : DATA.filter(r => r.rater === activeRater);
+}
+
+function countBy(rows, key) {
+  const m = {};
+  rows.forEach(r => { m[r[key]] = (m[r[key]] || 0) + 1; });
+  return m;
+}
+
+function renderChips() {
+  const raters = [...new Set(DATA.map(r => r.rater))].sort((a, b) => a.localeCompare(b));
+  const box = document.getElementById("rater-chips");
+  box.innerHTML = "";
+  ["All", ...raters].forEach(name => {
+    const b = document.createElement("button");
+    b.className = "chip" + (name === activeRater ? " on" : "");
+    b.textContent = name === "All" ? "All raters" : name;
+    b.onclick = () => { activeRater = name; activeCommentTheme = null; renderAll(false); };
+    box.appendChild(b);
+  });
+}
+
+function renderKpis(rows) {
+  const c = countBy(rows, "verdict");
+  const lm = c["LiveMap"] || 0, gg = c["Google"] || 0;
+  const tw = c["Both work well"] || 0, tp = c["Both work poorly"] || 0;
+  const n = rows.length;
+  const atLeast = n ? Math.round((lm + tw + tp) / n * 100) : 0;
+  const matched = lm + tw + tp;
+  const ties = tw + tp;
+  const lmP = n ? Math.round(lm / n * 100) : 0;
+  const ggP = n ? Math.round(gg / n * 100) : 0;
+  const tiesP = n ? Math.round(ties / n * 100) : 0;
+  document.getElementById("kpis").innerHTML = `
+    <div class="kpi hero">
+      <div class="summary-grid">
+        <div>
+          <div class="label">ARI Fast matched or beat Google</div>
+          <div class="value">${n ? atLeast + "%" : "–"}</div>
+        </div>
+        <div class="summary-copy">
+          <div class="summary-strip" aria-label="Verdict summary">
+            <div class="summary-row"><span>ARI won</span><div class="summary-track"><div class="summary-fill livemap" style="width:${lmP}%"></div></div><b><span class="summary-base">${lm}/${n}</span> · ${lmP}%</b></div>
+            <div class="summary-row"><span>Google won</span><div class="summary-track"><div class="summary-fill google" style="width:${ggP}%"></div></div><b><span class="summary-base">${gg}/${n}</span> · ${ggP}%</b></div>
+            <div class="summary-row"><span>Ties</span><div class="summary-track"><div class="summary-fill tie" style="width:${tiesP}%"></div></div><b><span class="summary-base">${ties}/${n}</span> · ${tiesP}%</b></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderStudyContext() {
+  const raterCount = new Set(DATA.map(r => r.rater)).size;
+  const comparisonCount = DATA.length;
+  const testerLabel = raterCount === 1 ? "team tester who knows the city" : "team testers who know the city";
+  const comparisonLabel = comparisonCount === 1 ? "route comparison" : "route comparisons";
+  document.getElementById("study-context").innerHTML =
+    `We ran a blind side-by-side test with <strong>${raterCount} ${testerLabel}</strong>, covering <strong>${comparisonCount} ${comparisonLabel}</strong>. For each origin-destination pair, testers chose which anonymous option worked better as the <strong>Fast route</strong> and explained what made the other route worse. Results should be read as expert/local feedback, not as a representative user benchmark.`;
+}
+
+function reasonCounts(rows) {
+  const vsGoogle = {}, vsLiveMap = {}, bothPoor = {};
+  rows.forEach(r => {
+    let bucket = null;
+    if (r.verdict === "LiveMap") bucket = vsGoogle;
+    else if (r.verdict === "Google") bucket = vsLiveMap;
+    else if (r.verdict === "Both work poorly") bucket = bothPoor;
+    if (!bucket) return;
+    r.reasons.forEach(x => { bucket[x] = (bucket[x] || 0) + 1; });
+  });
+  return { vsGoogle, vsLiveMap, bothPoor };
+}
+
+function makeChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+function dashedBarOutlinePlugin(pluginId, targetLabels, borderColors) {
+  return {
+    id: pluginId,
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        if (!targetLabels.includes(dataset.label)) return;
+        const meta = chart.getDatasetMeta(datasetIndex);
+        meta.data.forEach(bar => {
+          if (!bar || Math.abs(bar.x - bar.base) <= 0 || bar.height <= 0) return;
+          const left = Math.min(bar.base, bar.x);
+          const width = Math.abs(bar.x - bar.base);
+          const top = bar.y - bar.height / 2;
+          ctx.save();
+          ctx.strokeStyle = borderColors[dataset.label] || "#A9AEA7";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.strokeRect(left + 0.5, top + 0.5, width - 1, bar.height - 1);
+          ctx.restore();
+        });
+      });
+    }
+  };
+}
+
+function stackedBarPercentLabels(pluginId) {
+  return {
+    id: pluginId,
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      const hovered = chart.$hoveredSegment;
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
+        meta.data.forEach((bar, index) => {
+          const value = Math.abs(dataset.data[index] || 0);
+          if (!bar) return;
+          const isMuted = MUTED.has(dataset.label);
+          const isHovered = hovered && hovered.datasetIndex === datasetIndex && hovered.index === index;
+          if (isMuted && !isHovered) return;
+          const left = Math.min(bar.base, bar.x);
+          const width = Math.abs(bar.x - bar.base);
+          if (width < (isMuted ? 30 : 44)) return;
+          ctx.save();
+          ctx.fillStyle = isMuted ? (TEXT_ON_SOFT[dataset.label] || "#1C221F") : "#FFFFFF";
+          ctx.font = "700 12px 'IBM Plex Sans', sans-serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(Math.round(value) + "%", left + 9, bar.y);
+          ctx.restore();
+        });
+      });
+    }
+  };
+}
+
+function pctReasonChart(id, boxId, counts, denom, color, big) {
+  const labels = REASONS.filter(x => counts[x]).sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+  const rowH = big ? 48 : 40;
+  document.getElementById(boxId).style.height = Math.max(big ? 240 : 180, labels.length * rowH + 36) + "px";
+  const pct = labels.map(x => denom ? Math.round((counts[x] || 0) / denom * 100) : 0);
+  const raw = labels.map(x => counts[x] || 0);
+  const backgrounds = labels.map(label => label === "Other" ? "#F1F1EA" : (REASON_HIGHLIGHTS[label] || color));
+  const otherOutline = {
+    id: "otherOutline",
+    afterDatasetsDraw(chart) {
+      const otherIndex = labels.indexOf("Other");
+      if (otherIndex < 0) return;
+      const bar = chart.getDatasetMeta(0).data[otherIndex];
+      if (!bar) return;
+      const { ctx } = chart;
+      const left = Math.min(bar.base, bar.x);
+      const right = Math.max(bar.base, bar.x);
+      const top = bar.y - bar.height / 2;
+      const width = right - left;
+      ctx.save();
+      ctx.strokeStyle = "#565B56";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(left, top, width, bar.height, 3);
+      else ctx.rect(left, top, width, bar.height);
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+  const trackPlugin = {
+    id: "barTrack",
+    beforeDatasetsDraw(chart) {
+      const { ctx, chartArea } = chart;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach(bar => {
+        if (!bar) return;
+        const top = bar.y - bar.height / 2;
+        ctx.save();
+        ctx.fillStyle = "#DCDAD0";
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(chartArea.left, top, chartArea.right - chartArea.left, bar.height, 3);
+        else ctx.rect(chartArea.left, top, chartArea.right - chartArea.left, bar.height);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+  };
+  const barEndLabels = {
+    id: "barEndLabels",
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea } = chart;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach((bar, i) => {
+        if (!bar) return;
+        const baseText = `${raw[i]}/${denom}`;
+        const pctText = `${pct[i]}%`;
+        ctx.save();
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.font = `${big ? "500 13px" : "500 12.5px"} 'IBM Plex Sans', sans-serif`;
+        ctx.fillStyle = "#8A918A";
+        const x = chartArea.right + 12;
+        ctx.fillText(baseText, x, bar.y);
+        const baseWidth = ctx.measureText(baseText).width;
+        ctx.fillStyle = "#49514B";
+        ctx.font = `${big ? "600 13px" : "600 12.5px"} 'IBM Plex Sans', sans-serif`;
+        ctx.fillText(` · ${pctText}`, x + baseWidth, bar.y);
+        ctx.restore();
+      });
+    }
+  };
+  makeChart(id, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: pct,
+        backgroundColor: backgrounds,
+        borderRadius: 3,
+        borderSkipped: false,
+        maxBarThickness: big ? 26 : 20
+      }]
+    },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: big ? 92 : 84 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      },
+      scales: {
+        x: { min: 0, max: 100, display: false, border: { display: false } },
+        y: { ticks: { color: "#1C221F", font: ctx => ({ family: "'IBM Plex Sans', sans-serif", size: big ? 15 : 14, weight: REASON_HIGHLIGHTS[labels[ctx.index]] ? "700" : "400" }) }, grid: { display: false }, border: { display: false } }
+      }
+    },
+    plugins: [trackPlugin, otherOutline, barEndLabels]
+  });
+}
+
+function renderReasons(rows) {
+  const { vsGoogle, vsLiveMap, bothPoor } = reasonCounts(rows);
+  const total = {};
+  REASONS.forEach(x => { total[x] = (vsGoogle[x] || 0) + (vsLiveMap[x] || 0) + (bothPoor[x] || 0); });
+  const nAnyLost = rows.filter(r => r.verdict !== "Both work well").length;
+
+  pctReasonChart("reasonsChart", "reasons-box", total, nAnyLost, NEUTRAL, true);
+}
+
+function renderRaterChart(rows) {
+  const raters = [...new Set(rows.map(r => r.rater))];
+  const single = raters.length === 1;
+  const totals = {};
+  raters.forEach(name => { totals[name] = rows.filter(r => r.rater === name).length; });
+  raters.sort((a, b) => totals[b] - totals[a] || a.localeCompare(b));
+  const labels = raters.map(name => `${name} (${totals[name]})`);
+  document.getElementById("rater-chart-section").classList.toggle("single-rater", single);
+  document.getElementById("rater-box").style.height = single ? "112px" : Math.max(280, raters.length * 60 + 52) + "px";
+  const dsets = VERDICTS.map(v => {
+    const raw = raters.map(name => rows.filter(r => r.rater === name && r.verdict === v).length);
+    return {
+      label: v,
+      data: raw.map((x, i) => totals[raters[i]] ? x / totals[raters[i]] * 100 : 0),
+      rawCounts: raw,
+      backgroundColor: MUTED.has(v) ? SOFT[v] : COLORS[v],
+      borderColor: MUTED.has(v) ? "transparent" : SOLID_BORDER[v],
+      borderWidth: { top: 1, bottom: 1, left: 1, right: 1 },
+      borderSkipped: false,
+      borderRadius: 0,
+      maxBarThickness: single ? 40 : 34
+    };
+  });
+  const mutedOutline = dashedBarOutlinePlugin("raterMutedOutline", ["Both work well", "Both work poorly"], MUTED_BORDER);
+  const percentLabels = stackedBarPercentLabels("raterPercentLabels");
+  makeChart("raterChart", {
+    type: "bar",
+    data: { labels, datasets: dsets },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      onHover(event, elements, chart) {
+        const next = elements.length ? { datasetIndex: elements[0].datasetIndex, index: elements[0].index } : null;
+        const prev = chart.$hoveredSegment;
+        const changed = (!prev && next) || (prev && !next) ||
+          (prev && next && (prev.datasetIndex !== next.datasetIndex || prev.index !== next.index));
+        if (changed) {
+          chart.$hoveredSegment = next;
+          chart.draw();
+        }
+      },
+      hover: { mode: "nearest", intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      },
+      layout: { padding: { top: single ? 4 : 0, bottom: single ? 0 : 0 } },
+      scales: {
+        x: { stacked: true, min: 0, max: 100, display: false, border: { display: false } },
+        y: { stacked: true, ticks: { color: "#1C221F", font: { family: "'IBM Plex Sans', sans-serif", size: 15 } }, grid: { display: false }, border: { display: false } }
+      }
+    },
+    plugins: [mutedOutline, percentLabels]
+  });
+}
+
+function esc(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function themeMatchesRecord(theme, record) {
+  const text = record.comment.toLowerCase();
+  if (theme.excludeTerms?.some(term => termInText(text, term))) return false;
+  if (theme.terms.some(term => termInText(text, term))) return true;
+  if (theme.contextualTerms && theme.context) {
+    return theme.contextualTerms.some(term => termInText(text, term)) && theme.context.some(term => termInText(text, term));
+  }
+  return false;
+}
+
+function termInText(text, term) {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}([^\\p{L}\\p{N}]|$)`, "iu").test(text);
+}
+
+function commentHtml(r) {
+  return `
+    <div class="comment">
+      <div class="who">
+        <span>${esc(r.rater)}</span>
+        <span class="tag" style="background:${SOFT[r.verdict]}; color:${TEXT_ON_SOFT[r.verdict]};">${verdictLabel(r.verdict)}</span>
+        <span>${r.overlap}% overlap</span>
+      </div>
+      <p>${esc(r.comment)}</p>
+      ${r.reasons.length ? `<div class="reasons">${r.reasons.map(esc).join(" · ")}</div>` : ""}
+    </div>`;
+}
+
+function themeItemHtml(name, description, matches, denom, extraClass, showStats) {
+  const pct = denom ? Math.round(matches.length / denom * 100) : 0;
+  const width = Math.max(3, pct);
+  const isActive = name === activeCommentTheme;
+  const inlineComments = isActive ? `
+    <div class="theme-comments">
+      ${matches.map(commentHtml).join("")}
+    </div>` : "";
+  const stats = showStats ? `
+          <div class="theme-title">${esc(name)} <span>${matches.length}/${denom} · ${pct}%</span></div>
+          <div class="theme-bar" aria-hidden="true"><div class="theme-fill" style="width:${width}%"></div></div>` : `
+          <div class="theme-title">${esc(name)}</div>`;
+  return `
+    <div class="theme-item${extraClass ? " " + extraClass : ""}">
+      <button class="theme-row${isActive ? " on" : ""}" type="button" data-theme="${esc(name)}" aria-pressed="${isActive}" aria-expanded="${isActive}">
+        <div>${stats}
+        </div>
+        <div class="theme-description">${esc(description)}</div>
+        <span class="theme-toggle" aria-hidden="true">${isActive ? "Hide comments ▴" : `View ${matches.length} comments ▾`}</span>
+      </button>
+      ${inlineComments}
+    </div>`;
+}
+
+function renderCommentThemes(rows) {
+  const withText = rows.filter(r => r.comment);
+  const box = document.getElementById("comment-themes");
+  if (!withText.length) {
+    box.innerHTML = '<p style="color: var(--ink-3); font-size: 16px;">No comments to analyse for this selection.</p>';
+    return;
+  }
+
+  const themes = COMMENT_THEMES.map(theme => {
+    const matches = withText.filter(r => {
+      const fixed = fixedAssignment(r);
+      return fixed ? fixed === theme.name : themeMatchesRecord(theme, r);
+    });
+    return { ...theme, matches };
+  }).sort((a, b) => b.matches.length - a.matches.length || a.name.localeCompare(b.name));
+
+  const covered = withText.filter(r =>
+    !fixedAssignment(r) && !COMMENT_THEMES.some(t => themeMatchesRecord(t, r)));
+  const themedCount = withText.length - covered.length;
+
+  const coveredDescription = "These comments do not add a new qualitative theme: they describe issues that are already represented in the \u201cWhy the losing route lost\u201d chart above, such as missed or unclear shortcuts, turns, stairs, detours, and crossings.";
+
+  box.innerHTML = `<div class="theme-list">
+    ${themes.map(t => themeItemHtml(t.name, t.description, t.matches, themedCount, "", true)).join("")}
+    ${themeItemHtml(COVERED_NAME, coveredDescription, covered, themedCount, "covered", false)}
+  </div>`;
+
+  box.querySelectorAll("[data-theme]").forEach(button => {
+    button.onclick = () => {
+      const nextTheme = button.dataset.theme;
+      activeCommentTheme = activeCommentTheme === nextTheme ? null : nextTheme;
+      renderCommentThemes(rows);
+    };
+  });
+}
+
+function renderAll(rebuildChips = true) {
+  const rows = subset();
+  if (rebuildChips) renderChips(); else renderChips();
+  renderStudyContext();
+  renderKpis(rows);
+  renderCommentThemes(rows);
+  renderReasons(rows);
+  document.getElementById("rater-chart-section").hidden = false;
+  document.getElementById("detail-rater-divider").hidden = false;
+  renderRaterChart(rows);
+}
+
+function loadRaw(raw, sourceLabel) {
+  const { records, errors } = parseData(raw);
+  const status = document.getElementById("parse-status");
+  if (!records.length) {
+    status.textContent = "No valid rows found. Check that each row ends with \"Delete\".";
+    status.className = "err";
+    return;
+  }
+  DATA = records.map((r, i) => ({ ...r, id: i }));
+  activeRater = "All";
+  activeCommentTheme = null;
+  renderAll();
+  status.className = "";
+  status.textContent = `Loaded ${records.length} rows from ${sourceLabel}` + (errors.length ? ` · ${errors.length} row(s) skipped (missing rater, verdict, or overlap)` : "");
+}
+
+document.getElementById("btn-load").onclick = () => {
+  const raw = document.getElementById("paste-area").value;
+  if (!raw.trim()) {
+    const s = document.getElementById("parse-status");
+    s.textContent = "Paste some data first."; s.className = "err";
+    return;
+  }
+  loadRaw(raw, "pasted text");
+};
+document.getElementById("btn-reset").onclick = () => {
+  document.getElementById("paste-area").value = "";
+  loadRaw(RAW_DATA, "embedded data");
+};
+
+document.getElementById("detail-report").addEventListener("toggle", event => {
+  if (event.target.open) {
+    renderReasons(subset());
+    renderRaterChart(subset());
+  }
+});
+
+loadRaw(RAW_DATA, "embedded data");
+document.getElementById("parse-status").textContent = "";
+</script>
+</body>
+</html>
