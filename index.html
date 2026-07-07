@@ -1865,13 +1865,12 @@ function compareReasonCharts(boxId, ariCounts, googleCounts, ariDenom, googleDen
   ["reasonsChart", "ariReasonsChart", "googleReasonsChart"].forEach(id => {
     if (charts[id]) { charts[id].destroy(); delete charts[id]; }
   });
-  const topReasons = counts => REASONS
-    .filter(x => counts[x])
-    .sort((a, b) => (counts[b] || 0) - (counts[a] || 0) || a.localeCompare(b))
-    .slice(0, 3);
-  const ariTop = new Set(topReasons(ariCounts));
-  const googleTop = new Set(topReasons(googleCounts));
-  const sharedTop = new Set([...ariTop].filter(x => googleTop.has(x)));
+  const pctFor = (counts, denom, label) => denom ? (counts[label] || 0) / denom * 100 : 0;
+  const sharedTop = new Set(REASONS.filter(label => {
+    if (label === "Other") return false;
+    if (!(ariCounts[label] && googleCounts[label])) return false;
+    return Math.max(pctFor(ariCounts, ariDenom, label), pctFor(googleCounts, googleDenom, label)) >= 15;
+  }));
   const rankingHtml = (counts, denom, colorClass) => {
     const labels = REASONS.filter(x => counts[x])
       .sort((a, b) => (counts[b] || 0) - (counts[a] || 0) || a.localeCompare(b));
