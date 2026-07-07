@@ -782,26 +782,6 @@
         <p class="sec-note">Qualitative signals that are not already captured by the structured reason taxonomy above.</p>
         <div class="card" id="comment-themes"></div>
       </section>
-
-      <hr class="path-divider">
-
-      <section id="data-update-section">
-        <div class="sec-head"><h2>Update the data</h2></div>
-        <details class="updater">
-          <summary>Paste a new export to refresh every chart</summary>
-          <div class="updater-body">
-            <p>When hosted, the dashboard can load <span>data/feedback.jsonl</span> automatically. The paste box is still useful for quick local checks or one-off exports.</p>
-            <textarea id="paste-area" placeholder="Kristin	ARI	81%&#10;Crossing friction&#10;Delete&#10;..." aria-label="Paste raw export"></textarea>
-            <div class="btn-row">
-              <button class="btn" id="btn-live">Load latest data file</button>
-              <button class="btn" id="btn-load">Load pasted data</button>
-              <button class="btn ghost" id="btn-reset">Restore embedded data</button>
-              <span id="parse-status"></span>
-            </div>
-            <span class="source-status" id="source-status"></span>
-          </div>
-        </details>
-      </section>
     </div>
   </details>
 
@@ -1858,7 +1838,7 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status");
   const sourceStatus = document.getElementById("source-status");
   if (!records.length) {
-    if (!options.silent) {
+    if (!options.silent && status) {
       status.textContent = "No valid rows found.";
       status.className = "err";
     }
@@ -1872,17 +1852,17 @@ function loadRecords(records, errors, sourceLabel, options = {}) {
   activeCommentTheme = null;
   activeReasonMode = "all";
   renderAll();
-  if (options.silent) {
+  if (status && options.silent) {
     status.textContent = "";
     status.className = "";
-  } else {
+  } else if (status) {
     status.className = "";
   }
   const excluded = records.length - DATA.length;
   const last = DATA.map(r => r.receivedAt).filter(Boolean).sort().pop();
   const lastText = last ? ` · latest ${new Date(last).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}` : "";
   const message = `Loaded ${DATA.length} rows from ${sourceLabel}` + (excluded ? ` · ${excluded} excluded` : "") + (errors.length ? ` · ${errors.length} row(s) skipped` : "") + lastText;
-  if (!options.silent) status.textContent = message;
+  if (!options.silent && status) status.textContent = message;
   if (sourceStatus) sourceStatus.textContent = message;
 }
 
@@ -1905,7 +1885,7 @@ async function loadExternalData(options = {}) {
     loadFeedbackJsonl(raw, "latest data file", options);
     return true;
   } catch (error) {
-    if (!options.silent) {
+    if (!options.silent && status) {
       status.textContent = `Could not load ${EXTERNAL_DATA_URL}. Using embedded data.`;
       status.className = "err";
     }
@@ -1913,22 +1893,32 @@ async function loadExternalData(options = {}) {
   }
 }
 
-document.getElementById("btn-load").onclick = () => {
-  const raw = document.getElementById("paste-area").value;
-  if (!raw.trim()) {
-    const s = document.getElementById("parse-status");
-    s.textContent = "Paste some data first."; s.className = "err";
-    return;
-  }
-  loadRaw(raw, "pasted text");
-};
-document.getElementById("btn-live").onclick = () => {
-  loadExternalData({ silent: false });
-};
-document.getElementById("btn-reset").onclick = () => {
-  document.getElementById("paste-area").value = "";
-  loadRaw(RAW_DATA, "embedded data");
-};
+const pasteButton = document.getElementById("btn-load");
+const liveButton = document.getElementById("btn-live");
+const resetButton = document.getElementById("btn-reset");
+if (pasteButton) {
+  pasteButton.onclick = () => {
+    const raw = document.getElementById("paste-area")?.value || "";
+    if (!raw.trim()) {
+      const s = document.getElementById("parse-status");
+      if (s) { s.textContent = "Paste some data first."; s.className = "err"; }
+      return;
+    }
+    loadRaw(raw, "pasted text");
+  };
+}
+if (liveButton) {
+  liveButton.onclick = () => {
+    loadExternalData({ silent: false });
+  };
+}
+if (resetButton) {
+  resetButton.onclick = () => {
+    const pasteArea = document.getElementById("paste-area");
+    if (pasteArea) pasteArea.value = "";
+    loadRaw(RAW_DATA, "embedded data");
+  };
+}
 
 document.querySelectorAll(".reason-mode").forEach(button => {
   button.onclick = () => {
@@ -1946,7 +1936,8 @@ document.getElementById("detail-report").addEventListener("toggle", event => {
 
 loadRaw(RAW_DATA, "embedded data", { silent: true });
 loadExternalData({ silent: true });
-document.getElementById("parse-status").textContent = "";
+const parseStatus = document.getElementById("parse-status");
+if (parseStatus) parseStatus.textContent = "";
 
 // ── Shared comment layer ─────────────────────────────────────
 (function() {
@@ -1964,8 +1955,7 @@ document.getElementById("parse-status").textContent = "";
     { id: "detail", label: "Detailed report", selectors: ["#detail-report"] },
     { id: "raters", label: "Verdicts by rater", selectors: ["#rater-chart-section"] },
     { id: "reasons", label: "Losing route reasons", selectors: ["#reasons-section"] },
-    { id: "themes", label: "Free-text themes", selectors: ["#comment-theme-section"] },
-    { id: "data", label: "Update data", selectors: ["#data-update-section"] }
+    { id: "themes", label: "Free-text themes", selectors: ["#comment-theme-section"] }
   ];
 
   let comments = [];
@@ -2014,7 +2004,6 @@ document.getElementById("parse-status").textContent = "";
     if (el.closest("#rater-chart-section")) return "raters";
     if (el.closest("#reasons-section")) return "reasons";
     if (el.closest("#comment-theme-section")) return "themes";
-    if (el.closest("#data-update-section")) return "data";
     if (el.closest("#detail-report")) return "detail";
     if (el.closest("header, .overview, #priority-summary")) return "atGlance";
     return sectionFromViewport();
