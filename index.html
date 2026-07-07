@@ -886,24 +886,18 @@
     line-height: 1.45;
     font-style: italic;
   }
-  .sel-byline {
-    color: rgba(255,255,255,.62);
-    padding: 0 12px 8px;
-    font-size: 12px;
-  }
-  .sel-name-row {
+  .sel-field {
     display: grid;
-    grid-template-columns: 72px 1fr;
-    gap: 8px;
-    align-items: center;
-    padding: 9px 12px 6px;
+    gap: 6px;
+    padding: 10px 12px 0;
   }
-  .sel-name-row label {
+  .sel-field label {
     color: rgba(255,255,255,.78);
     font-size: 12px;
     font-weight: 700;
   }
-  .sel-name-row input {
+  .sel-field input,
+  .sel-field textarea {
     width: 100%;
     min-width: 0;
     border: 1px solid rgba(255,255,255,.22);
@@ -915,32 +909,37 @@
     font-size: 13px;
     outline: none;
   }
-  .sel-name-row input:focus {
+  .sel-field textarea {
+    min-height: 72px;
+    resize: vertical;
+    line-height: 1.4;
+  }
+  .sel-field input:focus,
+  .sel-field textarea:focus {
     border-color: rgba(255,255,255,.55);
     background: rgba(255,255,255,.14);
   }
-  .sel-name-row input::placeholder { color: rgba(255,255,255,.42); }
-  .sel-row { display: flex; align-items: stretch; }
-  .sel-row input {
-    flex: 1;
-    min-width: 0;
-    border: 0;
-    background: transparent;
-    color: #fff;
-    padding: 10px 12px;
-    font: inherit;
-    outline: none;
+  .sel-field input::placeholder,
+  .sel-field textarea::placeholder { color: rgba(255,255,255,.55); }
+  .sel-help {
+    color: rgba(255,255,255,.62);
+    font-size: 12px;
   }
-  .sel-row input::placeholder { color: rgba(255,255,255,.45); }
-  .sel-row button {
+  .sel-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px 12px 12px;
+  }
+  .sel-footer button {
     border: 0;
+    border-radius: 7px;
     background: var(--livemap);
     color: #fff;
-    padding: 0 13px;
+    padding: 9px 14px;
     font: 700 12px/1 'IBM Plex Sans', system-ui, sans-serif;
     cursor: pointer;
   }
-  .sel-row button:disabled { opacity: .45; cursor: default; }
+  .sel-footer button:disabled { opacity: .45; cursor: default; }
   mark.sel-active-highlight {
     background: rgba(162, 28, 175, .18);
     border-bottom: 2px solid var(--livemap);
@@ -1045,13 +1044,16 @@
 
 <div class="sel-popover" id="selPopover" role="tooltip">
   <div class="sel-quote" id="selQuote"></div>
-  <div class="sel-name-row">
-    <label for="selNameInput">Your name</label>
-    <input id="selNameInput" placeholder="Anonymous" maxlength="40" autocomplete="name">
+  <div class="sel-field">
+    <label for="selInput">Comment</label>
+    <textarea id="selInput" placeholder="Write your comment..." maxlength="500" autocomplete="off" rows="3"></textarea>
   </div>
-  <div class="sel-byline">This name will appear next to your comment.</div>
-  <div class="sel-row">
-    <input id="selInput" placeholder="Comment on selection..." maxlength="500" autocomplete="off">
+  <div class="sel-field">
+    <label for="selNameInput">Your name</label>
+    <input id="selNameInput" placeholder="Add your name..." maxlength="40" autocomplete="name">
+    <div class="sel-help">Saved for your next comments.</div>
+  </div>
+  <div class="sel-footer">
     <button type="button" id="selSend" disabled>Post</button>
   </div>
 </div>
@@ -2978,6 +2980,12 @@ if (parseStatus) parseStatus.textContent = "";
     return { left, top, right, bottom, width: right - left, height: bottom - top };
   }
 
+  function renderSelectionComposer() {
+    const hasComment = !!selInput.value.trim();
+    const hasName = !selNameInput || !!selNameInput.value.trim();
+    selSend.disabled = !(hasComment && hasName);
+  }
+
   function updateSelectionAction() {
     if (selPopover.classList.contains("visible")) return;
     const sel = window.getSelection();
@@ -3020,7 +3028,7 @@ if (parseStatus) parseStatus.textContent = "";
 
   function positionSelectionPopover(rect) {
     const width = Math.min(320, window.innerWidth - 24);
-    const height = 176;
+    const height = 320;
     let top = rect.top - height - 8;
     if (top < 8) top = rect.bottom + 8;
     let left = rect.left + rect.width / 2;
@@ -3043,8 +3051,8 @@ if (parseStatus) parseStatus.textContent = "";
     positionSelectionPopover(pendingSelection.rect);
     selPopover.classList.add("visible");
     selInput.value = "";
-    selSend.disabled = true;
-    setTimeout(() => (getAuthor() ? selInput : selNameInput).focus(), 40);
+    renderSelectionComposer();
+    setTimeout(() => selInput.focus(), 40);
   }
 
   function wrapSelection(range) {
@@ -3065,6 +3073,11 @@ if (parseStatus) parseStatus.textContent = "";
     const body = selInput.value.trim();
     if (!body || !pendingSelection) return;
     const typedName = selNameInput ? selNameInput.value.trim() : "";
+    if (!typedName) {
+      renderSelectionComposer();
+      selNameInput?.focus();
+      return;
+    }
     if (typedName !== getAuthor()) setAuthor(typedName);
     const author = typedName || "Anonymous";
     comments.push({
@@ -3211,9 +3224,9 @@ if (parseStatus) parseStatus.textContent = "";
     }, 80);
   });
 
-  selInput.addEventListener("input", () => { selSend.disabled = !selInput.value.trim(); });
+  selInput.addEventListener("input", renderSelectionComposer);
   selInput.addEventListener("keydown", event => {
-    if (event.key === "Enter") postSelectionComment();
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) postSelectionComment();
     if (event.key === "Escape") hideSelectionPopover();
   });
   selSend.addEventListener("click", postSelectionComment);
@@ -3221,10 +3234,12 @@ if (parseStatus) parseStatus.textContent = "";
     selNameInput.addEventListener("keydown", event => {
       if (event.key === "Enter") {
         event.preventDefault();
-        selInput.focus();
+        if (selInput.value.trim()) postSelectionComment();
+        else selInput.focus();
       }
       if (event.key === "Escape") hideSelectionPopover();
     });
+    selNameInput.addEventListener("input", renderSelectionComposer);
     selNameInput.addEventListener("blur", () => {
       const typedName = selNameInput.value.trim();
       if (typedName !== getAuthor()) setAuthor(typedName);
