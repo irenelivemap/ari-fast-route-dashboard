@@ -257,7 +257,7 @@
   .reason-compare-panel h3 { font-size: 18px; font-weight: 600; margin-bottom: 18px; }
   .reason-compare-panel p { color: var(--ink-3); font-size: 14px; margin-bottom: 14px; }
   .reason-rank { display: grid; gap: 12px; }
-  .reason-rank-row { display: grid; grid-template-columns: minmax(145px, 0.9fr) minmax(120px, 1.2fr) auto; gap: 12px; align-items: center; }
+  .reason-rank-row { display: grid; grid-template-columns: minmax(145px, 0.9fr) minmax(0, 1.2fr) minmax(92px, max-content); gap: 12px; align-items: center; }
   .reason-rank-label { font-weight: 500; color: var(--ink); }
   .reason-rank-label.shared { font-weight: 700; }
   .reason-rank-track { height: 26px; border-radius: 4px; background: #DCDAD0; overflow: hidden; }
@@ -274,7 +274,7 @@
     background: #F8F8F2;
     border-color: #A9AEA7;
   }
-  .reason-rank-value { color: #49514B; font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .reason-rank-value { color: #49514B; font-size: 14px; font-weight: 600; justify-self: end; text-align: right; white-space: nowrap; }
   .reason-rank-base { color: #8A918A; font-weight: 500; }
   @media (max-width: 860px) { .reason-compare-grid { grid-template-columns: 1fr; } }
   .comment { border-top: 1px dotted var(--line); padding: 14px 2px; }
@@ -1984,7 +1984,7 @@ function pctReasonChart(id, boxId, counts, denom, color, big, useHighlights = tr
     },
     options: {
       indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      layout: { padding: { right: big ? 92 : 84 } },
+      layout: { padding: { right: big ? 128 : 112 } },
       plugins: {
         legend: { display: false },
         tooltip: { enabled: false }
