@@ -679,13 +679,6 @@
     font-size: 11.5px;
   }
   .cmnt-reply-author { color: var(--ink); font-weight: 700; }
-  .cmnt-reply-context {
-    margin-bottom: 5px;
-    color: var(--ink-3);
-    font-size: 11.5px;
-    line-height: 1.35;
-  }
-  .cmnt-reply-context strong { color: var(--ink-2); }
   .cmnt-reply-text {
     white-space: pre-wrap;
     color: var(--ink);
@@ -2464,20 +2457,13 @@ if (parseStatus) parseStatus.textContent = "";
     return { replies: nextReplies, changed };
   }
 
-  function flattenReplies(replies = [], parent = null, out = []) {
+  function flattenReplies(replies = [], out = []) {
     replies.forEach(rawReply => {
       const reply = normalizeReply(rawReply);
-      out.push({ reply, parent });
-      flattenReplies(reply.replies, reply, out);
+      out.push(reply);
+      flattenReplies(reply.replies, out);
     });
-    return out.sort((a, b) => (a.reply.ts || 0) - (b.reply.ts || 0));
-  }
-
-  function replyContext(parent) {
-    if (!parent) return "";
-    const snippet = String(parent.text || "").replace(/\s+/g, " ").trim();
-    const shortSnippet = snippet.length > 58 ? snippet.slice(0, 58) + "..." : snippet;
-    return `<div class="cmnt-reply-context">Replying to <strong>${safe(parent.author || "Anonymous")}</strong>${shortSnippet ? `: “${safe(shortSnippet)}”` : ""}</div>`;
+    return out.sort((a, b) => (a.ts || 0) - (b.ts || 0));
   }
 
   function removeReplyFromTree(replies = [], targetId) {
@@ -2532,8 +2518,8 @@ if (parseStatus) parseStatus.textContent = "";
           <button class="primary" type="button" data-reply-submit="${safe(targetId)}">Post reply</button>
         </div>
       </div>` : "";
-    const renderReply = entry => {
-      const reply = normalizeReply(entry.reply);
+    const renderReply = rawReply => {
+      const reply = normalizeReply(rawReply);
       const replyLiked = reply.likedBy.includes(clientId);
       const replyEditKey = `reply:${reply.id}`;
       const isEditingReply = activeEditKey === replyEditKey;
@@ -2547,7 +2533,6 @@ if (parseStatus) parseStatus.textContent = "";
               ${canEditReply ? `<button class="cmnt-delete" type="button" title="Delete" data-reply-delete="${safe(reply.id)}">×</button>` : ""}
             </span>
           </div>
-          ${replyContext(entry.parent)}
           ${isEditingReply ? `
             <div class="cmnt-edit-compose" data-edit-box="${safe(replyEditKey)}">
               <textarea data-edit-text="${safe(replyEditKey)}">${safe(reply.text)}</textarea>
