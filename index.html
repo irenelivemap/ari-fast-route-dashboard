@@ -922,11 +922,25 @@
     background: rgba(255,255,255,.13);
   }
   .sel-name-field {
+    grid-template-columns: auto minmax(120px, 1fr);
+    align-items: center;
+    gap: 8px;
     padding-top: 8px;
   }
+  .sel-name-field label {
+    color: rgba(255,255,255,.62);
+    font-size: 11px;
+    font-weight: 600;
+  }
   .sel-name-field input {
-    padding: 7px 9px;
-    background: rgba(255,255,255,.08);
+    min-height: 32px;
+    border-color: rgba(255,255,255,.16);
+    background: transparent;
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+  .sel-name-field .sel-help {
+    grid-column: 2;
   }
   .sel-field input:focus,
   .sel-field textarea:focus {
