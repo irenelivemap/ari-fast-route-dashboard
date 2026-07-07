@@ -3120,19 +3120,19 @@ if (parseStatus) parseStatus.textContent = "";
 
   document.addEventListener("mouseup", event => {
     if (event.target.closest("#cmntDrawer, #selPopover, .cmnt-onboard")) return;
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
-    const selectedText = sel.toString().trim();
-    if (selectedText.length < 3) return;
-    const range = sel.getRangeAt(0).cloneRange();
-    const rect = range.getBoundingClientRect();
-    const section = sectionForElement(sel.anchorNode?.parentElement);
-    wrapSelection(sel.getRangeAt(0));
-    sel.removeAllRanges();
-    pendingSelection = { quote: selectedText, section, rect };
-    selPopover.classList.remove("visible");
-    positionSelectionAction(rect);
-    selAction.classList.add("visible");
+    setTimeout(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+      const selectedText = sel.toString().trim();
+      if (selectedText.length < 3) return;
+      const range = sel.getRangeAt(0).cloneRange();
+      const rect = range.getBoundingClientRect();
+      const section = sectionForElement(sel.anchorNode?.parentElement);
+      pendingSelection = { quote: selectedText, section, rect };
+      selPopover.classList.remove("visible");
+      positionSelectionAction(rect);
+      selAction.classList.add("visible");
+    }, 40);
   });
 
   document.addEventListener("mousedown", event => {
