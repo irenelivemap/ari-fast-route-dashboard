@@ -2341,6 +2341,8 @@ if (parseStatus) parseStatus.textContent = "";
       byId.set(next.id, {
         ...existing,
         ...next,
+        deleted: !!(existing.deleted || next.deleted),
+        deletedTs: Math.max(existing.deletedTs || 0, next.deletedTs || 0) || undefined,
         likedBy: [...new Set([...(existing.likedBy || []), ...(next.likedBy || [])])],
         replies: mergeReplies(existing.replies, next.replies)
       });
@@ -2361,6 +2363,8 @@ if (parseStatus) parseStatus.textContent = "";
       byId.set(next.id, {
         ...existing,
         ...next,
+        deleted: !!(existing.deleted || next.deleted),
+        deletedTs: Math.max(existing.deletedTs || 0, next.deletedTs || 0) || undefined,
         likedBy: [...new Set([...(existing.likedBy || []), ...(next.likedBy || [])])],
         replies: mergeReplies(existing.replies, next.replies)
       });
@@ -2476,16 +2480,22 @@ if (parseStatus) parseStatus.textContent = "";
   }
 
   function filteredComments() {
-    return activeSection === null ? [...comments] : comments.filter(c => c.section === activeSection);
+    const visible = comments.map(normalizeComment).filter(c => !c.deleted);
+    return activeSection === null ? visible : visible.filter(c => c.section === activeSection);
   }
 
   function activityCount(rows = comments) {
-    return rows.reduce((count, comment) => count + 1 + replyCountDeep(normalizeComment(comment).replies), 0);
+    return rows.reduce((count, comment) => {
+      const normalized = normalizeComment(comment);
+      if (normalized.deleted) return count;
+      return count + 1 + replyCountDeep(normalized.replies);
+    }, 0);
   }
 
   function replyCountDeep(replies = []) {
     return replies.reduce((count, reply) => {
       const normalized = normalizeReply(reply);
+      if (normalized.deleted) return count;
       return count + 1 + replyCountDeep(normalized.replies);
     }, 0);
   }
@@ -2509,6 +2519,10 @@ if (parseStatus) parseStatus.textContent = "";
   function flattenReplies(replies = [], out = []) {
     replies.forEach(rawReply => {
       const reply = normalizeReply(rawReply);
+      if (reply.deleted) {
+        flattenReplies(reply.replies, out);
+        return;
+      }
       out.push(reply);
       flattenReplies(reply.replies, out);
     });
@@ -2517,20 +2531,18 @@ if (parseStatus) parseStatus.textContent = "";
 
   function removeReplyFromTree(replies = [], targetId) {
     let changed = false;
-    const nextReplies = [];
-    replies.forEach(rawReply => {
+    const nextReplies = replies.map(rawReply => {
       const reply = normalizeReply(rawReply);
       if (reply.id === targetId && isMine(reply)) {
         changed = true;
-        return;
+        return { ...reply, deleted: true, deletedTs: Date.now(), text: "", likedBy: [] };
       }
       const nested = removeReplyFromTree(reply.replies, targetId);
       if (nested.changed) {
         changed = true;
-        nextReplies.push({ ...reply, replies: nested.replies });
-        return;
+        return { ...reply, replies: nested.replies };
       }
-      nextReplies.push(reply);
+      return reply;
     });
     return { replies: nextReplies, changed };
   }
@@ -2652,7 +2664,11 @@ if (parseStatus) parseStatus.textContent = "";
       button.addEventListener("click", event => {
         event.stopPropagation();
         activeMenuKey = null;
-        comments = comments.filter(c => c.id !== button.dataset.delete || !isMine(normalizeComment(c)));
+        comments = comments.map(comment => {
+          const normalized = normalizeComment(comment);
+          if (normalized.id !== button.dataset.delete || !isMine(normalized)) return normalized;
+          return { ...normalized, deleted: true, deletedTs: Date.now(), text: "", quote: "", likedBy: [] };
+        });
         saveComments();
       });
     });
