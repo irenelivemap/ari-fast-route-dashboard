@@ -16,11 +16,6 @@ function applyCors(res) {
   Object.entries(CORS_HEADERS).forEach(([key, value]) => res.setHeader(key, value));
 }
 
-function getPathParts(req) {
-  const rawPath = req.query.path || [];
-  return Array.isArray(rawPath) ? rawPath : [rawPath];
-}
-
 function sendJson(res, status, body, headers = {}) {
   applyCors(res);
   Object.entries(headers).forEach(([key, value]) => res.setHeader(key, value));
@@ -33,6 +28,19 @@ function sendText(res, status, body, headers = {}) {
   res.status(status).send(body);
 }
 
+function handleOptions(req, res) {
+  if (req.method !== "OPTIONS") return false;
+  applyCors(res);
+  res.status(204).end();
+  return true;
+}
+
+function allowOnlyGet(req, res) {
+  if (req.method === "GET") return true;
+  sendJson(res, 405, { error: "Method not allowed" }, { "Allow": "GET, OPTIONS" });
+  return false;
+}
+
 async function fetchSource(config) {
   const response = await fetch(config.sourceUrl, {
     headers: { "Accept": "text/plain, */*" }
@@ -43,40 +51,13 @@ async function fetchSource(config) {
   return response.text();
 }
 
-module.exports = async function handler(req, res) {
-  if (req.method === "OPTIONS") {
-    applyCors(res);
-    res.status(204).end();
-    return;
-  }
+async function sendDashboardData(req, res, slug, { refresh = false } = {}) {
+  if (handleOptions(req, res)) return;
+  if (!allowOnlyGet(req, res)) return;
 
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Method not allowed" }, { "Allow": "GET, OPTIONS" });
-    return;
-  }
-
-  const parts = getPathParts(req).filter(Boolean);
-  if (!parts.length) {
-    sendJson(res, 200, {
-      service: "dashboard-data",
-      dashboards: Object.keys(DASHBOARDS),
-      routes: [
-        "/api/:dashboard",
-        "/api/:dashboard/refresh"
-      ]
-    });
-    return;
-  }
-
-  const [slug, action] = parts;
   const config = DASHBOARDS[slug];
   if (!config) {
     sendJson(res, 404, { error: "Unknown dashboard", dashboards: Object.keys(DASHBOARDS) });
-    return;
-  }
-
-  if (parts.length > 2 || (action && action !== "refresh")) {
-    sendJson(res, 404, { error: "Not found" });
     return;
   }
 
@@ -84,7 +65,7 @@ module.exports = async function handler(req, res) {
     const body = await fetchSource(config);
     sendText(res, 200, body, {
       "Content-Type": config.contentType,
-      "Cache-Control": action === "refresh" ? "no-store" : "s-maxage=60, stale-while-revalidate=300",
+      "Cache-Control": refresh ? "no-store" : "s-maxage=60, stale-while-revalidate=300",
       "X-Dashboard-Data-Source": "source",
       "X-Dashboard-Slug": slug
     });
@@ -94,4 +75,24 @@ module.exports = async function handler(req, res) {
       detail: error.message
     });
   }
+}
+
+function sendIndex(req, res) {
+  if (handleOptions(req, res)) return;
+  if (!allowOnlyGet(req, res)) return;
+
+  sendJson(res, 200, {
+    service: "dashboard-data",
+    dashboards: Object.keys(DASHBOARDS),
+    routes: [
+      "/api",
+      "/api/ari-fast-routes",
+      "/api/ari-fast-routes/refresh"
+    ]
+  });
+}
+
+module.exports = {
+  sendDashboardData,
+  sendIndex
 };

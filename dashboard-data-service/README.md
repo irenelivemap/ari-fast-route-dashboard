@@ -50,7 +50,7 @@ npx vercel --prod
 
 ## Add Another Dashboard
 
-Add a new entry to `DASHBOARDS` in `api/[...path].js`:
+Add a new entry to `DASHBOARDS` in `lib/dashboard-data.js`:
 
 ```javascript
 "another-dashboard": {
