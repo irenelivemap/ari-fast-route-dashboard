@@ -1222,6 +1222,7 @@ const REASONS = ["Misses shortcut", "Unclear shortcut", "Longer distance", "Long
 const EXTERNAL_DATA_URL = "data/feedback.jsonl";
 const EXTERNAL_DATA_META_URL = "data/feedback-meta.json";
 const DASHBOARD_DATA_SERVICE_URL = "https://ari-fast-route-dashboard-data.vercel.app/api/ari-fast-routes";
+const DATA_FETCH_TIMEOUT_MS = 15000;
 const LIVE_REASON_LABELS = {
   longer_time: "Longer time",
   longer_distance: "Longer distance",
@@ -2316,8 +2317,10 @@ function dataSaveMessage(status) {
 async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
   const status = document.getElementById("parse-status") || document.getElementById("source-status");
   const fetchUrl = options.cacheBust ? `${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}` : url;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), options.timeoutMs || DATA_FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(fetchUrl, { cache: "no-store" });
+    const res = await fetch(fetchUrl, { cache: "no-store", signal: controller.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const raw = await res.text();
     const saveStatus = res.headers.get("X-Dashboard-Data-Save") || "";
@@ -2331,10 +2334,13 @@ async function loadFeedbackFromUrl(url, sourceLabel, options = {}) {
     return true;
   } catch (error) {
     if (!options.silent && status) {
-      status.textContent = options.errorMessage || `Could not load ${url}.`;
+      const timedOut = error && error.name === "AbortError";
+      status.textContent = timedOut ? (options.timeoutMessage || "The check took too long. Try again.") : (options.errorMessage || `Could not load ${url}.`);
       status.className = status.id === "source-status" ? "source-status err" : "err";
     }
     return false;
+  } finally {
+    window.clearTimeout(timeout);
   }
 }
 
@@ -2392,18 +2398,22 @@ if (latestTestsButton) {
       status.textContent = "Checking...";
       status.className = "source-status";
     }
-    const loaded = await loadLatestTestData({
-      silent: false,
-      cacheBust: true,
-      errorMessage: "Latest test data service is not available yet."
-    });
-    if (!loaded && status) {
-      status.textContent = "Could not check for new data.";
-      status.className = "source-status err";
+    try {
+      const loaded = await loadLatestTestData({
+        silent: false,
+        cacheBust: true,
+        errorMessage: "Could not check for new data.",
+        timeoutMessage: "The check took too long. Try again."
+      });
+      if (!loaded && status && !status.textContent) {
+        status.textContent = "Could not check for new data.";
+        status.className = "source-status err";
+      }
+    } finally {
+      latestTestsButton.disabled = false;
+      if (label) label.textContent = originalText;
+      else latestTestsButton.textContent = originalText;
     }
-    latestTestsButton.disabled = false;
-    if (label) label.textContent = originalText;
-    else latestTestsButton.textContent = originalText;
   };
 }
 if (resetButton) {
